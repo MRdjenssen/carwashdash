@@ -1,4 +1,4 @@
-// TabletView with white button style and consistent clean UI
+// Finalized TabletView with improved UI layout and interactions
 
 import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
@@ -18,7 +18,7 @@ import app from './firebaseConfig';
 const db = getFirestore(app);
 
 export default function TabletView() {
-  const [view, setView] = useState('home');
+  const [view, setView] = useState('vandaag');
   const [today, setToday] = useState(dayjs().format('YYYY-MM-DD'));
   const [todayTasks, setTodayTasks] = useState([]);
   const [weeklyTasks, setWeeklyTasks] = useState([]);
@@ -86,18 +86,18 @@ export default function TabletView() {
     setExpandedDays(prev => prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]);
   };
 
-  const toggleDoneTask = async (taskId, current) => {
-    await updateDoc(doc(db, 'tasks', taskId), { done: !current });
+  const toggleDoneTask = async (taskId, current, isWeekly = false) => {
+    await updateDoc(doc(db, isWeekly ? 'weeklyTasks' : 'tasks', taskId), { done: !current });
   };
 
   const toggleNoteExpand = (id) => {
     setExpandedNotes(prev => prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id]);
   };
 
-  const TaskItem = ({ id, text, done, notes }) => (
+  const TaskItem = ({ id, text, done, notes, isWeekly }) => (
     <div className="bg-white rounded-xl p-4 shadow flex items-start space-x-4 border border-gray-200">
       <button
-        onClick={() => toggleDoneTask(id, done)}
+        onClick={() => toggleDoneTask(id, done, isWeekly)}
         className={`w-6 h-6 rounded-full border-2 mt-1 flex items-center justify-center ${done ? 'border-green-500 bg-green-500' : 'border-gray-400'}`}
       >
         {done && <div className="w-2.5 h-2.5 bg-white rounded-full" />}
@@ -109,122 +109,134 @@ export default function TabletView() {
     </div>
   );
 
-  if (view === 'home') {
-    return (
-      <div className="min-h-screen bg-gray-100 px-6 py-8 text-gray-800">
+  const navTabs = [
+    { id: 'vandaag', label: 'Vandaag', icon: '📅' },
+    { id: 'weektaken', label: 'Weektaken', icon: '🗓' },
+    { id: 'kennisbank', label: 'Kennisbank', icon: '📚' },
+    { id: 'bestellen', label: 'Bestellen', icon: '🛒' },
+  ];
+
+  return (
+    <div className="min-h-screen flex flex-col bg-gray-50 text-gray-800 relative pb-24">
+      {/* Header */}
+      <div className="flex justify-between items-center px-4 py-4 shadow bg-white">
         <img
           src="https://23g-sharedhosting-grit-wordpress.s3.eu-west-1.amazonaws.com/wp-content/uploads/sites/13/2023/11/30093636/Logo_kort_wit.png"
           alt="Logo"
-          className="mx-auto h-20 mb-4"
+          className="h-10 bg-green-600 p-1 rounded"
         />
-        <h1 className="text-center text-lg font-semibold mb-6">{currentTime}</h1>
-        <div className="grid grid-cols-2 gap-6 max-w-md mx-auto">
-          {['Vandaag', 'Weektaken', 'Kennisbank', 'Bestellen'].map((label, idx) => (
-            <button
-              key={idx}
-              onClick={() => setView(label.toLowerCase())}
-              className="bg-white text-black border border-gray-300 rounded-xl py-8 font-semibold shadow hover:border-green-500 text-xl"
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <span className="text-sm font-medium text-gray-600">{currentTime}</span>
+        <button className="text-sm text-red-600 font-semibold">Log uit</button>
       </div>
-    );
-  }
 
-  return (
-    <div className="min-h-screen bg-gray-50 px-4 py-6 text-gray-800">
-      <button onClick={() => setView('home')} className="bg-white text-black border border-gray-300 hover:border-green-500 px-4 py-2 rounded shadow mb-6 font-semibold">← Terug</button>
-      <h1 className="text-2xl font-bold mb-4">CarwashDash</h1>
+      {/* Main view */}
+      <div className="flex-1 px-4 py-4 overflow-y-auto">
+        {view === 'vandaag' && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold mb-2">Taken voor {dayjs(today).format('dddd DD MMMM')}</h2>
+            {todayTasks.map(task => (
+              <TaskItem key={task.id} id={task.id} text={task.text} notes={task.notes} done={task.done} />
+            ))}
+          </div>
+        )}
 
-      {view === 'vandaag' && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Taken voor {dayjs(today).format('dddd DD MMMM')}</h2>
-          {todayTasks.map(task => (
-            <TaskItem key={task.id} id={task.id} text={task.text} notes={task.notes} done={task.done} />
-          ))}
-        </div>
-      )}
-
-      {view === 'weektaken' && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold mb-2">Weektaken</h2>
-          {['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'].map((dayName, i) => {
-            const date = dayjs().startOf('week').add(i + 1, 'day').format('YYYY-MM-DD');
-            const items = weeklyTasks.filter(t => t.date === date);
-            return (
-              <div key={dayName} className="rounded-xl overflow-hidden border border-gray-200">
-                <button onClick={() => toggleDayExpand(date)} className="w-full bg-white text-black text-left px-4 py-3 font-semibold border-b border-gray-200 hover:text-green-600">
-                  {dayjs(date).format('dddd DD MMMM')}
-                </button>
-                {expandedDays.includes(date) && (
-                  <div className="bg-white p-4 space-y-3">
-                    {items.length > 0 ? items.map(task => (
-                      <TaskItem key={task.id} id={task.id} text={task.text} notes={task.notes} done={task.done} />
-                    )) : <p className="text-sm italic text-gray-500">Geen taken</p>}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {view === 'kennisbank' && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Kennisbank</h2>
-          {notes.map(note => (
-            <div key={note.id} className="border border-gray-200 rounded-xl overflow-hidden">
-              <button
-                onClick={() => toggleNoteExpand(note.id)}
-                className="w-full text-left px-4 py-3 bg-white text-black font-semibold hover:text-green-600 border-b border-gray-200"
-              >
-                {note.title}
-              </button>
-              {expandedNotes.includes(note.id) && (
-                <div className="bg-white px-4 py-3 text-sm whitespace-pre-wrap">
-                  {note.content}
+        {view === 'weektaken' && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold mb-2">Weektaken</h2>
+            {['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'].map((dayName, i) => {
+              const date = dayjs().startOf('week').add(i + 1, 'day').format('YYYY-MM-DD');
+              const items = weeklyTasks.filter(t => t.date === date);
+              const isExpanded = expandedDays.includes(date);
+              return (
+                <div key={dayName} className="rounded-xl overflow-hidden border border-gray-200">
+                  <button onClick={() => toggleDayExpand(date)} className={`w-full text-left px-4 py-3 font-semibold border-b ${isExpanded ? 'bg-green-600 text-white' : 'bg-white text-black'}`}>
+                    {dayjs(date).format('dddd DD MMMM')}
+                  </button>
+                  {isExpanded && (
+                    <div className="bg-white p-4 space-y-3">
+                      {items.length > 0 ? items.map(task => (
+                        <TaskItem key={task.id} id={task.id} text={task.text} notes={task.notes} done={task.done} isWeekly={true} />
+                      )) : <p className="text-sm italic text-gray-500">Geen taken</p>}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
 
-      {view === 'bestellen' && (
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Bestelformulier</h2>
-          <form onSubmit={handleOrderSubmit} className="bg-white p-4 rounded-xl shadow space-y-4">
-            <select
-              value={orderForm.type}
-              onChange={e => handleOrderChange('type', e.target.value)}
-              className="w-full p-2 rounded border border-gray-300"
-            >
-              <option value="kleding">Kleding</option>
-              <option value="onderdelen">Onderdelen</option>
-              <option value="producten">Producten</option>
-              <option value="overige">Overige</option>
-            </select>
-            <textarea
-              className="w-full p-2 rounded border border-gray-300"
-              placeholder="Wat is er nodig en hoeveel?"
-              value={orderForm.text}
-              onChange={e => handleOrderChange('text', e.target.value)}
-              required
-            ></textarea>
-            <input
-              type="text"
-              className="w-full p-2 rounded border border-gray-300"
-              placeholder="Voor wie of waarvoor is het?"
-              value={orderForm.target}
-              onChange={e => handleOrderChange('target', e.target.value)}
-              required
-            />
-            <button type="submit" className="w-full bg-white text-black border border-gray-300 hover:border-green-600 py-2 rounded font-bold">Versturen</button>
-          </form>
-        </div>
-      )}
+        {view === 'kennisbank' && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold">Kennisbank</h2>
+            {notes.map(note => {
+              const isExpanded = expandedNotes.includes(note.id);
+              return (
+                <div key={note.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => toggleNoteExpand(note.id)}
+                    className={`w-full text-left px-4 py-3 font-semibold border-b ${isExpanded ? 'bg-green-600 text-white' : 'bg-white text-black'}`}
+                  >
+                    {note.title}
+                  </button>
+                  {isExpanded && (
+                    <div className="bg-white px-4 py-3 text-sm whitespace-pre-wrap">
+                      {note.content}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {view === 'bestellen' && (
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Bestelformulier</h2>
+            <form onSubmit={handleOrderSubmit} className="bg-white p-4 rounded-xl shadow space-y-4">
+              <select
+                value={orderForm.type}
+                onChange={e => handleOrderChange('type', e.target.value)}
+                className="w-full p-2 rounded border border-gray-300"
+              >
+                <option value="kleding">Kleding</option>
+                <option value="onderdelen">Onderdelen</option>
+                <option value="producten">Producten</option>
+                <option value="overige">Overige</option>
+              </select>
+              <textarea
+                className="w-full p-2 rounded border border-gray-300"
+                placeholder="Wat is er nodig en hoeveel?"
+                value={orderForm.text}
+                onChange={e => handleOrderChange('text', e.target.value)}
+                required
+              ></textarea>
+              <input
+                type="text"
+                className="w-full p-2 rounded border border-gray-300"
+                placeholder="Voor wie of waarvoor is het?"
+                value={orderForm.target}
+                onChange={e => handleOrderChange('target', e.target.value)}
+                required
+              />
+              <button type="submit" className="w-full bg-white text-black border border-gray-300 hover:border-green-600 py-2 rounded font-bold">Versturen</button>
+            </form>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom Nav */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around py-3 shadow-inner z-10">
+        {navTabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setView(tab.id)}
+            className={`flex flex-col items-center text-sm ${view === tab.id ? 'text-green-600 font-bold' : 'text-gray-500'}`}
+          >
+            <div className="text-xl">{tab.icon}</div>
+            {tab.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
