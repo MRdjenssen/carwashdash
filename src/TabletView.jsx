@@ -1,4 +1,4 @@
-// React + Tailwind demo of CarwashDash Tablet View with dropdown notes and fixed checkboxes
+// Refined TabletView.jsx with clean modern UI, lighter theme, and polished design
 
 import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
@@ -66,12 +66,6 @@ export default function TabletView() {
     };
   }, [today]);
 
-  const backgroundStyle = {
-    backgroundImage: 'url(https://www.poste.sm/wp-content/uploads/2023/01/bg-1-poste.jpg)',
-    backgroundSize: 'cover',
-    backgroundPosition: 'center'
-  };
-
   const handleOrderChange = (field, value) => {
     setOrderForm({ ...orderForm, [field]: value });
   };
@@ -101,35 +95,35 @@ export default function TabletView() {
   };
 
   const TaskItem = ({ id, text, done, notes }) => (
-    <div className="bg-white rounded-xl p-4 shadow flex items-start space-x-4">
+    <div className="bg-white rounded-xl p-4 shadow flex items-start space-x-4 border border-gray-200">
       <button
         onClick={() => toggleDoneTask(id, done)}
-        className={`w-6 h-6 rounded-full border-4 ${done ? 'border-green-500' : 'border-gray-300'} transition mt-1`}
+        className={`w-6 h-6 rounded-full border-2 mt-1 flex items-center justify-center ${done ? 'border-green-500 bg-green-500' : 'border-gray-400'}`}
       >
-        {done && <div className="w-3 h-3 bg-green-500 rounded-full mx-auto mt-[3px]" />}
+        {done && <div className="w-2.5 h-2.5 bg-white rounded-full" />}
       </button>
       <div>
-        <p className={`font-medium ${done ? 'line-through text-gray-400' : 'text-black'}`}>{text}</p>
-        {notes && <p className="text-sm text-gray-500 italic">{notes}</p>}
+        <p className={`font-medium ${done ? 'line-through text-gray-400' : 'text-gray-800'}`}>{text}</p>
+        {notes && <p className="text-sm text-gray-500 italic mt-1">{notes}</p>}
       </div>
     </div>
   );
 
   if (view === 'home') {
     return (
-      <div className="min-h-screen px-6 py-8 text-white" style={backgroundStyle}>
+      <div className="min-h-screen bg-gray-100 px-6 py-8 text-gray-800">
         <img
           src="https://23g-sharedhosting-grit-wordpress.s3.eu-west-1.amazonaws.com/wp-content/uploads/sites/13/2023/11/30093636/Logo_kort_wit.png"
           alt="Logo"
           className="mx-auto h-20 mb-4"
         />
-        <h1 className="text-center text-xl font-semibold mb-6">{currentTime}</h1>
+        <h1 className="text-center text-lg font-semibold mb-6">{currentTime}</h1>
         <div className="grid grid-cols-2 gap-6 max-w-md mx-auto">
           {['Vandaag', 'Weektaken', 'Kennisbank', 'Bestellen'].map((label, idx) => (
             <button
               key={idx}
               onClick={() => setView(label.toLowerCase())}
-              className="bg-green-600 rounded-2xl py-10 font-semibold shadow hover:bg-green-700 text-xl"
+              className="bg-green-600 rounded-xl py-8 font-semibold shadow hover:bg-green-700 text-white text-xl"
             >
               {label}
             </button>
@@ -140,13 +134,13 @@ export default function TabletView() {
   }
 
   return (
-    <div className="min-h-screen px-4 py-6 text-white" style={backgroundStyle}>
-      <button onClick={() => setView('home')} className="bg-white text-green-600 px-4 py-2 rounded mb-4 font-bold">← Terug</button>
+    <div className="min-h-screen bg-gray-50 px-4 py-6 text-gray-800">
+      <button onClick={() => setView('home')} className="bg-white text-green-600 px-4 py-2 rounded shadow mb-6 font-semibold border">← Terug</button>
       <h1 className="text-2xl font-bold mb-4">CarwashDash</h1>
 
       {view === 'vandaag' && (
-        <div className="space-y-2">
-          <h2 className="text-xl font-semibold mb-2">Taken voor {dayjs(today).format('dddd DD MMMM')}</h2>
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Taken voor {dayjs(today).format('dddd DD MMMM')}</h2>
           {todayTasks.map(task => (
             <TaskItem key={task.id} id={task.id} text={task.text} notes={task.notes} done={task.done} />
           ))}
@@ -154,21 +148,21 @@ export default function TabletView() {
       )}
 
       {view === 'weektaken' && (
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Weektaken</h2>
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold mb-2">Weektaken</h2>
           {['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'].map((dayName, i) => {
             const date = dayjs().startOf('week').add(i + 1, 'day').format('YYYY-MM-DD');
             const items = weeklyTasks.filter(t => t.date === date);
             return (
-              <div key={dayName} className="mb-2">
-                <button onClick={() => toggleDayExpand(date)} className="w-full bg-green-700 text-white text-left px-4 py-2 rounded-t-xl font-bold">
+              <div key={dayName} className="rounded-xl overflow-hidden border border-gray-200">
+                <button onClick={() => toggleDayExpand(date)} className="w-full bg-green-600 text-white text-left px-4 py-3 font-semibold">
                   {dayjs(date).format('dddd DD MMMM')}
                 </button>
                 {expandedDays.includes(date) && (
-                  <div className="bg-white text-black p-4 rounded-b-xl space-y-2">
+                  <div className="bg-white p-4 space-y-3">
                     {items.length > 0 ? items.map(task => (
                       <TaskItem key={task.id} id={task.id} text={task.text} notes={task.notes} done={task.done} />
-                    )) : <p className="text-gray-600 italic">Geen taken</p>}
+                    )) : <p className="text-sm italic text-gray-500">Geen taken</p>}
                   </div>
                 )}
               </div>
@@ -179,17 +173,17 @@ export default function TabletView() {
 
       {view === 'kennisbank' && (
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold mb-2">Kennisbank</h2>
+          <h2 className="text-xl font-semibold">Kennisbank</h2>
           {notes.map(note => (
-            <div key={note.id} className="bg-white text-black rounded-xl">
+            <div key={note.id} className="border border-gray-200 rounded-xl overflow-hidden">
               <button
                 onClick={() => toggleNoteExpand(note.id)}
-                className="w-full text-left px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-t-xl"
+                className="w-full text-left px-4 py-3 bg-green-600 text-white font-semibold"
               >
                 {note.title}
               </button>
               {expandedNotes.includes(note.id) && (
-                <div className="p-4 text-sm whitespace-pre-wrap rounded-b-xl">
+                <div className="bg-white px-4 py-3 text-sm whitespace-pre-wrap">
                   {note.content}
                 </div>
               )}
@@ -201,11 +195,11 @@ export default function TabletView() {
       {view === 'bestellen' && (
         <div>
           <h2 className="text-xl font-semibold mb-4">Bestelformulier</h2>
-          <form onSubmit={handleOrderSubmit} className="bg-white text-black p-4 rounded-xl space-y-4">
+          <form onSubmit={handleOrderSubmit} className="bg-white p-4 rounded-xl shadow space-y-4">
             <select
               value={orderForm.type}
               onChange={e => handleOrderChange('type', e.target.value)}
-              className="w-full p-2 rounded border"
+              className="w-full p-2 rounded border border-gray-300"
             >
               <option value="kleding">Kleding</option>
               <option value="onderdelen">Onderdelen</option>
@@ -213,7 +207,7 @@ export default function TabletView() {
               <option value="overige">Overige</option>
             </select>
             <textarea
-              className="w-full p-2 rounded border"
+              className="w-full p-2 rounded border border-gray-300"
               placeholder="Wat is er nodig en hoeveel?"
               value={orderForm.text}
               onChange={e => handleOrderChange('text', e.target.value)}
@@ -221,13 +215,13 @@ export default function TabletView() {
             ></textarea>
             <input
               type="text"
-              className="w-full p-2 rounded border"
+              className="w-full p-2 rounded border border-gray-300"
               placeholder="Voor wie of waarvoor is het?"
               value={orderForm.target}
               onChange={e => handleOrderChange('target', e.target.value)}
               required
             />
-            <button type="submit" className="w-full bg-green-600 text-white py-2 rounded font-bold">Versturen</button>
+            <button type="submit" className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded font-bold">Versturen</button>
           </form>
         </div>
       )}
