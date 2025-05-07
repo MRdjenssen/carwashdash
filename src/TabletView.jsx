@@ -1,4 +1,5 @@
-// Final modern TabletView.jsx with full functionality and styled like mockup with circular checkboxes
+// React + Tailwind demo of CarwashDash Tablet View with dropdown notes and fixed checkboxes
+
 import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
 import {
@@ -8,6 +9,8 @@ import {
   where,
   onSnapshot,
   addDoc,
+  updateDoc,
+  doc,
   Timestamp,
 } from 'firebase/firestore';
 import app from './firebaseConfig';
@@ -21,6 +24,7 @@ export default function TabletView() {
   const [weeklyTasks, setWeeklyTasks] = useState([]);
   const [notes, setNotes] = useState([]);
   const [expandedDays, setExpandedDays] = useState([]);
+  const [expandedNotes, setExpandedNotes] = useState([]);
   const [orderForm, setOrderForm] = useState({ type: 'kleding', text: '', target: '' });
   const [currentTime, setCurrentTime] = useState('');
 
@@ -88,11 +92,22 @@ export default function TabletView() {
     setExpandedDays(prev => prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]);
   };
 
-  const TaskItem = ({ text, done, notes }) => (
+  const toggleDoneTask = async (taskId, current) => {
+    await updateDoc(doc(db, 'tasks', taskId), { done: !current });
+  };
+
+  const toggleNoteExpand = (id) => {
+    setExpandedNotes(prev => prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id]);
+  };
+
+  const TaskItem = ({ id, text, done, notes }) => (
     <div className="bg-white rounded-xl p-4 shadow flex items-start space-x-4">
-      <div className="pt-1">
-        <div className={`w-6 h-6 rounded-full border-4 ${done ? 'border-green-500' : 'border-gray-300'} transition`} />
-      </div>
+      <button
+        onClick={() => toggleDoneTask(id, done)}
+        className={`w-6 h-6 rounded-full border-4 ${done ? 'border-green-500' : 'border-gray-300'} transition mt-1`}
+      >
+        {done && <div className="w-3 h-3 bg-green-500 rounded-full mx-auto mt-[3px]" />}
+      </button>
       <div>
         <p className={`font-medium ${done ? 'line-through text-gray-400' : 'text-black'}`}>{text}</p>
         {notes && <p className="text-sm text-gray-500 italic">{notes}</p>}
@@ -114,7 +129,7 @@ export default function TabletView() {
             <button
               key={idx}
               onClick={() => setView(label.toLowerCase())}
-              className="bg-green-500 rounded-2xl py-10 font-semibold shadow hover:bg-green-600 text-xl"
+              className="bg-green-600 rounded-2xl py-10 font-semibold shadow hover:bg-green-700 text-xl"
             >
               {label}
             </button>
@@ -133,7 +148,7 @@ export default function TabletView() {
         <div className="space-y-2">
           <h2 className="text-xl font-semibold mb-2">Taken voor {dayjs(today).format('dddd DD MMMM')}</h2>
           {todayTasks.map(task => (
-            <TaskItem key={task.id} text={task.text} notes={task.notes} done={task.done} />
+            <TaskItem key={task.id} id={task.id} text={task.text} notes={task.notes} done={task.done} />
           ))}
         </div>
       )}
@@ -152,7 +167,7 @@ export default function TabletView() {
                 {expandedDays.includes(date) && (
                   <div className="bg-white text-black p-4 rounded-b-xl space-y-2">
                     {items.length > 0 ? items.map(task => (
-                      <TaskItem key={task.id} text={task.text} notes={task.notes} done={task.done} />
+                      <TaskItem key={task.id} id={task.id} text={task.text} notes={task.notes} done={task.done} />
                     )) : <p className="text-gray-600 italic">Geen taken</p>}
                   </div>
                 )}
@@ -166,9 +181,18 @@ export default function TabletView() {
         <div className="space-y-4">
           <h2 className="text-xl font-semibold mb-2">Kennisbank</h2>
           {notes.map(note => (
-            <div key={note.id} className="bg-white text-black p-4 rounded-xl">
-              <h3 className="font-bold mb-1">{note.title}</h3>
-              <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+            <div key={note.id} className="bg-white text-black rounded-xl">
+              <button
+                onClick={() => toggleNoteExpand(note.id)}
+                className="w-full text-left px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-t-xl"
+              >
+                {note.title}
+              </button>
+              {expandedNotes.includes(note.id) && (
+                <div className="p-4 text-sm whitespace-pre-wrap rounded-b-xl">
+                  {note.content}
+                </div>
+              )}
             </div>
           ))}
         </div>
