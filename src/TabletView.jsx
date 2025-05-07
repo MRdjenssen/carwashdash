@@ -1,4 +1,4 @@
-// FULL TabletView.jsx — fully updated version
+// FULL TabletView.jsx with 'Bestellen' tab replacing 'Verkoop'
 import { useEffect, useState } from 'react';
 import app from './firebaseConfig';
 import {
@@ -9,7 +9,8 @@ import {
   onSnapshot,
   updateDoc,
   doc,
-  getDocs
+  getDocs,
+  addDoc
 } from 'firebase/firestore';
 import {
   getAuth,
@@ -33,6 +34,12 @@ export default function TabletView() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+
+  // Bestellen form state
+  const [orderType, setOrderType] = useState('kleding');
+  const [orderText, setOrderText] = useState('');
+  const [orderTarget, setOrderTarget] = useState('');
+  const [orderSent, setOrderSent] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -167,6 +174,20 @@ export default function TabletView() {
     setOpenDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
   };
 
+  const sendOrder = async () => {
+    if (!orderText.trim() || !orderTarget.trim()) return;
+    await addDoc(collection(db, 'orders'), {
+      type: orderType,
+      text: orderText,
+      target: orderTarget,
+      timestamp: Date.now(),
+      done: false
+    });
+    setOrderSent(true);
+    setOrderText('');
+    setOrderTarget('');
+  };
+
   const backgroundStyle = {
     backgroundImage: 'url(https://www.poste.sm/wp-content/uploads/2023/01/bg-1-poste.jpg)',
     backgroundSize: 'cover',
@@ -208,7 +229,7 @@ export default function TabletView() {
           <button onClick={() => setView('today')} className="bg-green-500 text-white font-bold py-10 rounded-2xl text-xl shadow-lg hover:bg-green-600">Vandaag</button>
           <button onClick={() => setView('week')} className="bg-green-500 text-white font-bold py-10 rounded-2xl text-xl shadow-lg hover:bg-green-600">Weektaken</button>
           <button onClick={() => setView('notes')} className="bg-green-500 text-white font-bold py-10 rounded-2xl text-xl shadow-lg hover:bg-green-600">Kennisbank</button>
-          <button onClick={() => setView('sales')} className="bg-green-500 text-white font-bold py-10 rounded-2xl text-xl shadow-lg hover:bg-green-600">Verkoop</button>
+          <button onClick={() => setView('bestellen')} className="bg-green-500 text-white font-bold py-10 rounded-2xl text-xl shadow-lg hover:bg-green-600">Bestellen</button>
         </div>
         <button onClick={handleLogout} className="mt-6 text-sm underline">Uitloggen</button>
       </div>
@@ -291,14 +312,35 @@ export default function TabletView() {
         </div>
       )}
 
-      {view === 'sales' && (
+      {view === 'bestellen' && (
         <div>
-          <h2 className="text-xl font-semibold mb-2">Live Verkoop Dashboard</h2>
-          <iframe
-            src="https://carwashkleiboer.carwash-cms.com/management/Dashboard"
-            className="w-full h-[500px] border rounded-xl"
-            title="Sales Dashboard"
-          ></iframe>
+          <h2 className="text-xl font-semibold mb-4">Bestelformulier</h2>
+          {orderSent && <p className="text-green-400 font-semibold mb-4">Bestelling verzonden!</p>}
+          <select
+            className="w-full p-2 rounded mb-3 text-black"
+            value={orderType}
+            onChange={(e) => setOrderType(e.target.value)}
+          >
+            <option value="kleding">Kleding</option>
+            <option value="onderdelen">Onderdelen</option>
+            <option value="producten">Producten</option>
+            <option value="overige">Overige</option>
+          </select>
+          <textarea
+            className="w-full p-2 mb-3 rounded text-black"
+            placeholder="Wat moet er besteld worden en hoeveel?"
+            value={orderText}
+            onChange={(e) => setOrderText(e.target.value)}
+          />
+          <input
+            className="w-full p-2 mb-3 rounded text-black"
+            placeholder="Voor wie of wat is het?"
+            value={orderTarget}
+            onChange={(e) => setOrderTarget(e.target.value)}
+          />
+          <button onClick={sendOrder} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded w-full">
+            Versturen
+          </button>
         </div>
       )}
     </div>

@@ -1,4 +1,4 @@
-// AdminPanel.jsx with tab layout
+// AdminPanel.jsx with 'Aangevraagde Bestellingen' tab added
 import { useEffect, useState } from 'react';
 import {
   getFirestore,
@@ -19,23 +19,22 @@ const db = getFirestore(app);
 export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState('day');
 
-  // Daily Tasks
   const [allTasks, setAllTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
   const [taskNote, setTaskNote] = useState('');
   const [taskDate, setTaskDate] = useState(dayjs().format('YYYY-MM-DD'));
 
-  // Weekly Tasks
   const [weeklyTasks, setWeeklyTasks] = useState([]);
   const [weeklyText, setWeeklyText] = useState('');
   const [weeklyNote, setWeeklyNote] = useState('');
   const [weeklyDate, setWeeklyDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [weeklyRepeat, setWeeklyRepeat] = useState('weekly');
 
-  // Kennisbank
   const [kennisbank, setKennisbank] = useState([]);
   const [newTabTitle, setNewTabTitle] = useState('');
   const [newTabContent, setNewTabContent] = useState('');
+
+  const [orders, setOrders] = useState([]);
 
   useEffect(() => {
     const unsubTasks = onSnapshot(query(collection(db, 'tasks'), orderBy('date')), (snapshot) => {
@@ -47,10 +46,14 @@ export default function AdminPanel() {
     const unsubKennisbank = onSnapshot(collection(db, 'kennisbank'), (snapshot) => {
       setKennisbank(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
+    const unsubOrders = onSnapshot(collection(db, 'orders'), (snapshot) => {
+      setOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
     return () => {
       unsubTasks();
       unsubWeekly();
       unsubKennisbank();
+      unsubOrders();
     };
   }, []);
 
@@ -107,15 +110,14 @@ export default function AdminPanel() {
     <div className="min-h-screen bg-gray-900 text-white p-6">
       <h1 className="text-3xl font-bold mb-4">CarwashDash Admin Panel</h1>
 
-      {/* Tab Navigation */}
-      <div className="flex space-x-4 mb-6">
+      <div className="flex flex-wrap gap-4 mb-6">
         <button onClick={() => setActiveTab('day')} className={`px-4 py-2 rounded ${activeTab === 'day' ? 'bg-green-600' : 'bg-gray-700'}`}>Dag Taken</button>
         <button onClick={() => setActiveTab('week')} className={`px-4 py-2 rounded ${activeTab === 'week' ? 'bg-green-600' : 'bg-gray-700'}`}>Week Taken</button>
         <button onClick={() => setActiveTab('notes')} className={`px-4 py-2 rounded ${activeTab === 'notes' ? 'bg-green-600' : 'bg-gray-700'}`}>Kennisbank</button>
         <button onClick={() => setActiveTab('overview')} className={`px-4 py-2 rounded ${activeTab === 'overview' ? 'bg-green-600' : 'bg-gray-700'}`}>Overzicht</button>
+        <button onClick={() => setActiveTab('orders')} className={`px-4 py-2 rounded ${activeTab === 'orders' ? 'bg-green-600' : 'bg-gray-700'}`}>Aangevraagde Bestellingen</button>
       </div>
 
-      {/* Tab Content */}
       {activeTab === 'day' && (
         <>
           <h2 className="text-xl font-semibold mb-2">Nieuwe Dagtaak</h2>
@@ -185,6 +187,25 @@ export default function AdminPanel() {
                 <button onClick={() => deleteItem(tab.id, 'kennisbank')} className="bg-red-600 hover:bg-red-700 px-2 py-1 rounded">Verwijder</button>
               </div>
               <p className="text-gray-300 text-sm whitespace-pre-wrap mt-2">{tab.content}</p>
+            </div>
+          ))}
+        </>
+      )}
+
+      {activeTab === 'orders' && (
+        <>
+          <h2 className="text-xl font-semibold mb-2">Aangevraagde Bestellingen</h2>
+          {orders.sort((a, b) => b.timestamp - a.timestamp).map(order => (
+            <div key={order.id} className="bg-gray-800 p-4 rounded mb-4 flex justify-between">
+              <div>
+                <p className="font-bold capitalize">{order.type}</p>
+                <p>{order.text}</p>
+                <small className="italic">Voor: {order.target}</small>
+              </div>
+              <div className="space-x-2">
+                <button onClick={() => toggleDone(order.id, 'orders', order.done)} className="bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded">{order.done ? 'Ongedaan' : 'Afgehandeld'}</button>
+                <button onClick={() => deleteItem(order.id, 'orders')} className="bg-red-600 hover:bg-red-700 px-2 py-1 rounded">Archiveer</button>
+              </div>
             </div>
           ))}
         </>
