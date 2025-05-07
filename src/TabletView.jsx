@@ -1,4 +1,4 @@
-// Refined TabletView.jsx with clean modern UI, lighter theme, and polished design
+// TabletView with white button style and consistent clean UI
 
 import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
@@ -123,7 +123,7 @@ export default function TabletView() {
             <button
               key={idx}
               onClick={() => setView(label.toLowerCase())}
-              className="bg-green-600 rounded-xl py-8 font-semibold shadow hover:bg-green-700 text-white text-xl"
+              className="bg-white text-black border border-gray-300 rounded-xl py-8 font-semibold shadow hover:border-green-500 text-xl"
             >
               {label}
             </button>
@@ -135,7 +135,7 @@ export default function TabletView() {
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-6 text-gray-800">
-      <button onClick={() => setView('home')} className="bg-white text-green-600 px-4 py-2 rounded shadow mb-6 font-semibold border">← Terug</button>
+      <button onClick={() => setView('home')} className="bg-white text-black border border-gray-300 hover:border-green-500 px-4 py-2 rounded shadow mb-6 font-semibold">← Terug</button>
       <h1 className="text-2xl font-bold mb-4">CarwashDash</h1>
 
       {view === 'vandaag' && (
@@ -155,7 +155,7 @@ export default function TabletView() {
             const items = weeklyTasks.filter(t => t.date === date);
             return (
               <div key={dayName} className="rounded-xl overflow-hidden border border-gray-200">
-                <button onClick={() => toggleDayExpand(date)} className="w-full bg-green-600 text-white text-left px-4 py-3 font-semibold">
+                <button onClick={() => toggleDayExpand(date)} className="w-full bg-white text-black text-left px-4 py-3 font-semibold border-b border-gray-200 hover:text-green-600">
                   {dayjs(date).format('dddd DD MMMM')}
                 </button>
                 {expandedDays.includes(date) && (
@@ -178,7 +178,7 @@ export default function TabletView() {
             <div key={note.id} className="border border-gray-200 rounded-xl overflow-hidden">
               <button
                 onClick={() => toggleNoteExpand(note.id)}
-                className="w-full text-left px-4 py-3 bg-green-600 text-white font-semibold"
+                className="w-full text-left px-4 py-3 bg-white text-black font-semibold hover:text-green-600 border-b border-gray-200"
               >
                 {note.title}
               </button>
@@ -221,7 +221,7 @@ export default function TabletView() {
               onChange={e => handleOrderChange('target', e.target.value)}
               required
             />
-            <button type="submit" className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded font-bold">Versturen</button>
+            <button type="submit" className="w-full bg-white text-black border border-gray-300 hover:border-green-600 py-2 rounded font-bold">Versturen</button>
           </form>
         </div>
       )}
