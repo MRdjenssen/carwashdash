@@ -1,4 +1,4 @@
-// Modernized AdminPanel.jsx with clean layout and consistent styling
+// AdminPanel.jsx – modernized UI with full functionality and branding
 import { useEffect, useState } from 'react';
 import {
   getFirestore,
@@ -7,6 +7,7 @@ import {
   orderBy,
   onSnapshot,
   addDoc,
+  deleteDoc,
   updateDoc,
   doc
 } from 'firebase/firestore';
@@ -34,19 +35,18 @@ export default function AdminPanel() {
   const [newTabContent, setNewTabContent] = useState('');
 
   const [orders, setOrders] = useState([]);
-  const [showArchivedOrders, setShowArchivedOrders] = useState(false);
 
   useEffect(() => {
-    const unsubTasks = onSnapshot(query(collection(db, 'tasks'), orderBy('date')), (snapshot) => {
+    const unsubTasks = onSnapshot(query(collection(db, 'tasks'), orderBy('date')), snapshot => {
       setAllTasks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
-    const unsubWeekly = onSnapshot(collection(db, 'weeklyTasks'), (snapshot) => {
+    const unsubWeekly = onSnapshot(collection(db, 'weeklyTasks'), snapshot => {
       setWeeklyTasks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
-    const unsubKennisbank = onSnapshot(collection(db, 'kennisbank'), (snapshot) => {
+    const unsubKennisbank = onSnapshot(collection(db, 'kennisbank'), snapshot => {
       setKennisbank(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
-    const unsubOrders = onSnapshot(collection(db, 'orders'), (snapshot) => {
+    const unsubOrders = onSnapshot(collection(db, 'orders'), snapshot => {
       setOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
     return () => {
@@ -82,8 +82,12 @@ export default function AdminPanel() {
     setWeeklyNote('');
   };
 
-  const updateField = async (id, coll, field, value) => {
-    await updateDoc(doc(db, coll, id), { [field]: value });
+  const deleteItem = async (id, coll) => {
+    await deleteDoc(doc(db, coll, id));
+  };
+
+  const toggleDone = async (id, coll, current) => {
+    await updateDoc(doc(db, coll, id), { done: !current });
   };
 
   const addTab = async () => {
@@ -96,56 +100,59 @@ export default function AdminPanel() {
     setNewTabContent('');
   };
 
+  const toggleArchiveOrder = async (id, current) => {
+    await updateDoc(doc(db, 'orders', id), { archived: !current });
+  };
+
   const groupedTasks = allTasks.reduce((groups, task) => {
     if (!groups[task.date]) groups[task.date] = [];
     groups[task.date].push(task);
     return groups;
   }, {});
 
-  const TabButton = ({ id, label }) => (
+  const navButton = (key, label) => (
     <button
-      onClick={() => setActiveTab(id)}
-      className={`px-4 py-2 rounded font-semibold transition ${activeTab === id ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-800'}`}
+      key={key}
+      onClick={() => setActiveTab(key)}
+      className={`px-4 py-2 rounded-xl text-sm font-medium transition ${activeTab === key ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-200'}`}
     >
       {label}
     </button>
   );
 
   return (
-    <div className="min-h-screen bg-gray-100 text-gray-900 p-6 font-sans">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">CarwashDash Admin</h1>
-        <div className="space-x-2">
-          <TabButton id="day" label="Dag Taken" />
-          <TabButton id="week" label="Week Taken" />
-          <TabButton id="notes" label="Kennisbank" />
-          <TabButton id="orders" label="Bestellingen" />
-          <TabButton id="overview" label="Overzicht" />
-        </div>
+    <div className="min-h-screen bg-gray-900 text-white p-6 font-sans">
+      <h1 className="text-3xl font-bold mb-6">CarwashDash Admin Panel</h1>
+
+      {/* Tab Navigation */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        {navButton('day', 'Dag Taken')}
+        {navButton('week', 'Week Taken')}
+        {navButton('notes', 'Kennisbank')}
+        {navButton('orders', 'Aangevraagde Bestellingen')}
       </div>
 
+      {/* Daily Tasks */}
       {activeTab === 'day' && (
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Nieuwe Dagtaak</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-            <input type="date" value={taskDate} onChange={(e) => setTaskDate(e.target.value)} className="p-2 rounded border" />
-            <input type="text" placeholder="Taak" value={newTask} onChange={(e) => setNewTask(e.target.value)} className="p-2 rounded border" />
-            <input type="text" placeholder="Instructies" value={taskNote} onChange={(e) => setTaskNote(e.target.value)} className="p-2 rounded border" />
-          </div>
-          <button onClick={addTask} className="bg-green-600 text-white px-4 py-2 rounded mb-6">Toevoegen</button>
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Nieuwe Dagtaak</h2>
+          <input type="date" value={taskDate} onChange={e => setTaskDate(e.target.value)} className="bg-gray-800 text-white p-2 rounded w-full" />
+          <input type="text" placeholder="Nieuwe taak" value={newTask} onChange={e => setNewTask(e.target.value)} className="bg-gray-800 text-white p-2 rounded w-full" />
+          <input type="text" placeholder="Instructies" value={taskNote} onChange={e => setTaskNote(e.target.value)} className="bg-gray-800 text-white p-2 rounded w-full" />
+          <button onClick={addTask} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded w-full">Toevoegen</button>
           {Object.keys(groupedTasks).map(date => (
-            <div key={date} className="mb-4">
-              <h3 className="font-medium text-lg mb-1">{dayjs(date).format('DD MMM YYYY')}</h3>
+            <div key={date} className="mt-4">
+              <h3 className="text-lg font-semibold mb-2">{dayjs(date).format('DD MMM YYYY')}</h3>
               <div className="space-y-2">
                 {groupedTasks[date].map(task => (
-                  <div key={task.id} className="bg-white rounded shadow p-4 flex justify-between">
+                  <div key={task.id} className="bg-gray-800 p-4 rounded-xl flex justify-between items-start">
                     <div>
                       <p className={task.done ? 'line-through text-gray-400' : ''}>{task.text}</p>
-                      <small className="text-gray-500">{task.notes}</small>
+                      <p className="text-sm text-gray-500 italic">{task.notes}</p>
                     </div>
                     <div className="space-x-2">
-                      <button onClick={() => updateField(task.id, 'tasks', 'done', !task.done)} className="bg-blue-500 text-white px-2 py-1 rounded">{task.done ? 'Ongedaan' : 'Klaar'}</button>
-                      <button onClick={() => updateField(task.id, 'tasks', 'archived', true)} className="bg-yellow-500 text-white px-2 py-1 rounded">Archiveer</button>
+                      <button onClick={() => toggleDone(task.id, 'tasks', task.done)} className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm">{task.done ? 'Ongedaan' : 'Klaar'}</button>
+                      <button onClick={() => deleteItem(task.id, 'tasks')} className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm">Verwijder</button>
                     </div>
                   </div>
                 ))}
@@ -155,32 +162,31 @@ export default function AdminPanel() {
         </div>
       )}
 
+      {/* Weekly Tasks */}
       {activeTab === 'week' && (
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Nieuwe Weektaken</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
-            <input type="date" value={weeklyDate} onChange={(e) => setWeeklyDate(e.target.value)} className="p-2 rounded border" />
-            <select value={weeklyRepeat} onChange={(e) => setWeeklyRepeat(e.target.value)} className="p-2 rounded border">
-              <option value="once">Eenmalig</option>
-              <option value="daily">Dagelijks</option>
-              <option value="weekly">Wekelijks</option>
-              <option value="monthly">Maandelijks</option>
-            </select>
-            <input type="text" placeholder="Taak" value={weeklyText} onChange={(e) => setWeeklyText(e.target.value)} className="p-2 rounded border" />
-            <input type="text" placeholder="Instructies" value={weeklyNote} onChange={(e) => setWeeklyNote(e.target.value)} className="p-2 rounded border" />
-          </div>
-          <button onClick={addWeeklyTask} className="bg-green-600 text-white px-4 py-2 rounded mb-6">Toevoegen</button>
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Nieuwe Weektaken</h2>
+          <input type="date" value={weeklyDate} onChange={e => setWeeklyDate(e.target.value)} className="bg-gray-800 text-white p-2 rounded w-full" />
+          <select value={weeklyRepeat} onChange={e => setWeeklyRepeat(e.target.value)} className="bg-gray-800 text-white p-2 rounded w-full">
+            <option value="once">Eenmalig</option>
+            <option value="daily">Dagelijks</option>
+            <option value="weekly">Wekelijks</option>
+            <option value="monthly">Maandelijks</option>
+          </select>
+          <input type="text" placeholder="Nieuwe taak" value={weeklyText} onChange={e => setWeeklyText(e.target.value)} className="bg-gray-800 text-white p-2 rounded w-full" />
+          <input type="text" placeholder="Instructies" value={weeklyNote} onChange={e => setWeeklyNote(e.target.value)} className="bg-gray-800 text-white p-2 rounded w-full" />
+          <button onClick={addWeeklyTask} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded w-full">Toevoegen</button>
           <div className="space-y-2">
             {weeklyTasks.map(task => (
-              <div key={task.id} className="bg-white rounded shadow p-4 flex justify-between">
+              <div key={task.id} className="bg-gray-800 p-4 rounded-xl flex justify-between items-start">
                 <div>
                   <p className={task.done ? 'line-through text-gray-400' : ''}>{task.text}</p>
-                  <small className="text-gray-500">{task.notes}</small><br />
-                  <small className="italic text-gray-400">{task.date} • {task.repeat}</small>
+                  <p className="text-sm text-gray-400 italic">{task.notes}</p>
+                  <p className="text-xs text-gray-500">{task.date} • {task.repeat}</p>
                 </div>
                 <div className="space-x-2">
-                  <button onClick={() => updateField(task.id, 'weeklyTasks', 'done', !task.done)} className="bg-blue-500 text-white px-2 py-1 rounded">{task.done ? 'Ongedaan' : 'Klaar'}</button>
-                  <button onClick={() => updateField(task.id, 'weeklyTasks', 'archived', true)} className="bg-yellow-500 text-white px-2 py-1 rounded">Archiveer</button>
+                  <button onClick={() => toggleDone(task.id, 'weeklyTasks', task.done)} className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm">{task.done ? 'Ongedaan' : 'Klaar'}</button>
+                  <button onClick={() => deleteItem(task.id, 'weeklyTasks')} className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm">Verwijder</button>
                 </div>
               </div>
             ))}
@@ -188,64 +194,41 @@ export default function AdminPanel() {
         </div>
       )}
 
+      {/* Kennisbank */}
       {activeTab === 'notes' && (
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Kennisbank</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <input type="text" placeholder="Titel" value={newTabTitle} onChange={(e) => setNewTabTitle(e.target.value)} className="p-2 rounded border" />
-            <textarea placeholder="Inhoud" value={newTabContent} onChange={(e) => setNewTabContent(e.target.value)} className="p-2 rounded border h-24"></textarea>
-          </div>
-          <button onClick={addTab} className="bg-green-600 text-white px-4 py-2 rounded mb-6">Toevoegen</button>
-          <div className="space-y-2">
-            {kennisbank.map(tab => (
-              <div key={tab.id} className="bg-white rounded shadow p-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="font-semibold">{tab.title}</h3>
-                  <button onClick={() => updateField(tab.id, 'kennisbank', 'archived', true)} className="bg-yellow-500 text-white px-2 py-1 rounded">Verwijder</button>
-                </div>
-                <p className="text-sm mt-2 whitespace-pre-wrap">{tab.content}</p>
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Kennisbank</h2>
+          <input type="text" placeholder="Titel" value={newTabTitle} onChange={e => setNewTabTitle(e.target.value)} className="bg-gray-800 text-white p-2 rounded w-full" />
+          <textarea placeholder="Inhoud" value={newTabContent} onChange={e => setNewTabContent(e.target.value)} className="bg-gray-800 text-white p-2 rounded w-full h-24" />
+          <button onClick={addTab} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded w-full">Toevoegen</button>
+          {kennisbank.map(tab => (
+            <div key={tab.id} className="bg-gray-800 p-4 rounded-xl">
+              <div className="flex justify-between items-center">
+                <h3 className="font-semibold text-lg">{tab.title}</h3>
+                <button onClick={() => deleteItem(tab.id, 'kennisbank')} className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm">Verwijder</button>
               </div>
-            ))}
-          </div>
+              <p className="text-gray-300 text-sm whitespace-pre-wrap mt-2">{tab.content}</p>
+            </div>
+          ))}
         </div>
       )}
 
+      {/* Orders */}
       {activeTab === 'orders' && (
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Aangevraagde Bestellingen</h2>
-          <label className="block mb-4">
-            <input
-              type="checkbox"
-              checked={showArchivedOrders}
-              onChange={() => setShowArchivedOrders(!showArchivedOrders)}
-              className="mr-2"
-            /> Toon gearchiveerde bestellingen
-          </label>
-          <div className="space-y-2">
-            {orders
-              .filter(order => showArchivedOrders ? order.archived : !order.archived)
-              .sort((a, b) => b.timestamp - a.timestamp)
-              .map(order => (
-                <div key={order.id} className="bg-white rounded shadow p-4 flex justify-between">
-                  <div>
-                    <p className="font-bold capitalize">{order.type}</p>
-                    <p>{order.text}</p>
-                    <small className="italic">Voor: {order.target}</small>
-                  </div>
-                  <div className="space-x-2">
-                    <button onClick={() => updateField(order.id, 'orders', 'done', !order.done)} className="bg-blue-500 text-white px-2 py-1 rounded">{order.done ? 'Ongedaan' : 'Klaar'}</button>
-                    <button onClick={() => updateField(order.id, 'orders', 'archived', true)} className="bg-yellow-500 text-white px-2 py-1 rounded">Archiveer</button>
-                  </div>
-                </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'overview' && (
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Overzicht / Analytics</h2>
-          <p className="text-gray-500">(Later kunnen we hier grafieken of exports toevoegen.)</p>
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Aangevraagde Bestellingen</h2>
+          {orders.map(order => (
+            <div key={order.id} className={`p-4 rounded-xl ${order.archived ? 'bg-gray-700' : 'bg-gray-800'} flex justify-between items-start`}>
+              <div>
+                <p><strong>Categorie:</strong> {order.type}</p>
+                <p><strong>Inhoud:</strong> {order.text}</p>
+                <p><strong>Doel:</strong> {order.target}</p>
+              </div>
+              <button onClick={() => toggleArchiveOrder(order.id, order.archived)} className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm">
+                {order.archived ? 'Heropen' : 'Archiveer'}
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>

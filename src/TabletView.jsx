@@ -1,27 +1,31 @@
-// Modernized TabletView.jsx with clean layout, preserved functionality, and Carwash Kleiboer branding
-import { useState, useEffect } from 'react';
+// Final modern TabletView.jsx with full functionality and styled like mockup with circular checkboxes
+import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
+import {
+  getFirestore,
+  collection,
+  query,
+  where,
+  onSnapshot,
+  addDoc,
+  Timestamp,
+} from 'firebase/firestore';
+import app from './firebaseConfig';
+
+const db = getFirestore(app);
 
 export default function TabletView() {
   const [view, setView] = useState('home');
-  const [todayTasks, setTodayTasks] = useState([
-    { id: 1, text: 'Clean vacuum station', done: false, notes: 'Use blue cloth and disinfectant' },
-    { id: 2, text: 'Restock vending machine', done: false, notes: 'Snacks and drinks as per list' },
-  ]);
-
-  const [weeklyTasks] = useState([
-    { id: 1, text: 'Deep clean water system', notes: 'Refer to SOP binder section 4', date: '2025-05-06' },
-  ]);
-
-  const [generalNotes] = useState(
-    'Welkom team! Vergeet niet vriendelijk te zijn tegen klanten. Bel de supervisor als er iets stuk is.'
-  );
-
+  const [today, setToday] = useState(dayjs().format('YYYY-MM-DD'));
+  const [todayTasks, setTodayTasks] = useState([]);
+  const [weeklyTasks, setWeeklyTasks] = useState([]);
+  const [notes, setNotes] = useState([]);
+  const [expandedDays, setExpandedDays] = useState([]);
   const [orderForm, setOrderForm] = useState({ type: 'kleding', text: '', target: '' });
   const [currentTime, setCurrentTime] = useState('');
 
   useEffect(() => {
-    const updateTime = () => {
+    const updateClock = () => {
       const now = new Date().toLocaleString('nl-NL', {
         timeZone: 'Europe/Amsterdam',
         weekday: 'long',
@@ -30,32 +34,33 @@ export default function TabletView() {
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-        second: '2-digit'
       });
       setCurrentTime(now);
     };
-    updateTime();
-    const intervalId = setInterval(updateTime, 1000);
-    return () => clearInterval(intervalId);
+    updateClock();
+    const interval = setInterval(updateClock, 60000);
+    return () => clearInterval(interval);
   }, []);
 
-  const toggleTask = (taskId) => {
-    setTodayTasks(
-      todayTasks.map((task) =>
-        task.id === taskId ? { ...task, done: !task.done } : task
-      )
+  useEffect(() => {
+    const unsubToday = onSnapshot(
+      query(collection(db, 'tasks'), where('date', '==', today)),
+      snapshot => {
+        setTodayTasks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      }
     );
-  };
-
-  const handleOrderChange = (field, value) => {
-    setOrderForm({ ...orderForm, [field]: value });
-  };
-
-  const handleOrderSubmit = (e) => {
-    e.preventDefault();
-    alert('Bestelling verzonden!');
-    setOrderForm({ type: 'kleding', text: '', target: '' });
-  };
+    const unsubWeekly = onSnapshot(collection(db, 'weeklyTasks'), snapshot => {
+      setWeeklyTasks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    const unsubNotes = onSnapshot(collection(db, 'kennisbank'), snapshot => {
+      setNotes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => {
+      unsubToday();
+      unsubWeekly();
+      unsubNotes();
+    };
+  }, [today]);
 
   const backgroundStyle = {
     backgroundImage: 'url(https://www.poste.sm/wp-content/uploads/2023/01/bg-1-poste.jpg)',
@@ -63,110 +68,142 @@ export default function TabletView() {
     backgroundPosition: 'center'
   };
 
-  const Button = ({ label, onClick }) => (
-    <button
-      onClick={onClick}
-      className="bg-green-500 text-white font-semibold py-8 px-4 rounded-xl shadow hover:bg-green-600 text-lg w-full"
-    >
-      {label}
-    </button>
+  const handleOrderChange = (field, value) => {
+    setOrderForm({ ...orderForm, [field]: value });
+  };
+
+  const handleOrderSubmit = async (e) => {
+    e.preventDefault();
+    await addDoc(collection(db, 'orders'), {
+      ...orderForm,
+      done: false,
+      archived: false,
+      timestamp: Timestamp.now(),
+    });
+    setOrderForm({ type: 'kleding', text: '', target: '' });
+    alert('Bestelling verzonden!');
+  };
+
+  const toggleDayExpand = (date) => {
+    setExpandedDays(prev => prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]);
+  };
+
+  const TaskItem = ({ text, done, notes }) => (
+    <div className="bg-white rounded-xl p-4 shadow flex items-start space-x-4">
+      <div className="pt-1">
+        <div className={`w-6 h-6 rounded-full border-4 ${done ? 'border-green-500' : 'border-gray-300'} transition`} />
+      </div>
+      <div>
+        <p className={`font-medium ${done ? 'line-through text-gray-400' : 'text-black'}`}>{text}</p>
+        {notes && <p className="text-sm text-gray-500 italic">{notes}</p>}
+      </div>
+    </div>
   );
 
   if (view === 'home') {
     return (
-      <div className="min-h-screen text-white px-6 py-8" style={backgroundStyle}>
+      <div className="min-h-screen px-6 py-8 text-white" style={backgroundStyle}>
         <img
           src="https://23g-sharedhosting-grit-wordpress.s3.eu-west-1.amazonaws.com/wp-content/uploads/sites/13/2023/11/30093636/Logo_kort_wit.png"
-          alt="Carwash Kleiboer wit logo"
+          alt="Logo"
           className="mx-auto h-20 mb-4"
         />
-        <h1 className="text-center text-xl font-bold mb-6">{currentTime}</h1>
+        <h1 className="text-center text-xl font-semibold mb-6">{currentTime}</h1>
         <div className="grid grid-cols-2 gap-6 max-w-md mx-auto">
-          <Button label="Vandaag" onClick={() => setView('today')} />
-          <Button label="Weektaken" onClick={() => setView('week')} />
-          <Button label="Kennisbank" onClick={() => setView('notes')} />
-          <Button label="Bestellen" onClick={() => setView('order')} />
+          {['Vandaag', 'Weektaken', 'Kennisbank', 'Bestellen'].map((label, idx) => (
+            <button
+              key={idx}
+              onClick={() => setView(label.toLowerCase())}
+              className="bg-green-500 rounded-2xl py-10 font-semibold shadow hover:bg-green-600 text-xl"
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen text-white px-4 py-6" style={backgroundStyle}>
-      <button onClick={() => setView('home')} className="bg-white text-green-700 font-bold px-4 py-2 rounded mb-4">← Terug</button>
+    <div className="min-h-screen px-4 py-6 text-white" style={backgroundStyle}>
+      <button onClick={() => setView('home')} className="bg-white text-green-600 px-4 py-2 rounded mb-4 font-bold">← Terug</button>
       <h1 className="text-2xl font-bold mb-4">CarwashDash</h1>
 
-      {view === 'today' && (
+      {view === 'vandaag' && (
+        <div className="space-y-2">
+          <h2 className="text-xl font-semibold mb-2">Taken voor {dayjs(today).format('dddd DD MMMM')}</h2>
+          {todayTasks.map(task => (
+            <TaskItem key={task.id} text={task.text} notes={task.notes} done={task.done} />
+          ))}
+        </div>
+      )}
+
+      {view === 'weektaken' && (
         <div>
-          <h2 className="text-xl font-semibold mb-2">Taken voor Vandaag</h2>
-          <div className="space-y-2">
-            {todayTasks.map((task) => (
-              <div key={task.id} className="bg-white text-black rounded-xl p-4 flex justify-between items-center">
-                <div>
-                  <p className={task.done ? 'line-through text-gray-500' : ''}>{task.text}</p>
-                  <small className="text-xs text-gray-600">{task.notes}</small>
-                </div>
-                <button
-                  onClick={() => toggleTask(task.id)}
-                  className="bg-green-600 text-white px-4 py-2 rounded"
-                >
-                  {task.done ? 'Ongedaan' : 'Klaar'}
+          <h2 className="text-xl font-semibold mb-4">Weektaken</h2>
+          {['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'].map((dayName, i) => {
+            const date = dayjs().startOf('week').add(i + 1, 'day').format('YYYY-MM-DD');
+            const items = weeklyTasks.filter(t => t.date === date);
+            return (
+              <div key={dayName} className="mb-2">
+                <button onClick={() => toggleDayExpand(date)} className="w-full bg-green-700 text-white text-left px-4 py-2 rounded-t-xl font-bold">
+                  {dayjs(date).format('dddd DD MMMM')}
                 </button>
+                {expandedDays.includes(date) && (
+                  <div className="bg-white text-black p-4 rounded-b-xl space-y-2">
+                    {items.length > 0 ? items.map(task => (
+                      <TaskItem key={task.id} text={task.text} notes={task.notes} done={task.done} />
+                    )) : <p className="text-gray-600 italic">Geen taken</p>}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       )}
 
-      {view === 'week' && (
-        <div>
-          <h2 className="text-xl font-semibold mb-2">Speciale Weektaken</h2>
-          <div className="space-y-2">
-            {weeklyTasks.map((task) => (
-              <div key={task.id} className="bg-white text-black rounded-xl p-4">
-                <p className="font-medium">{task.text}</p>
-                <small className="text-xs text-gray-600">{task.notes} — {dayjs(task.date).format('dddd DD MMM')}</small>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {view === 'notes' && (
-        <div>
+      {view === 'kennisbank' && (
+        <div className="space-y-4">
           <h2 className="text-xl font-semibold mb-2">Kennisbank</h2>
-          <div className="bg-white text-black rounded-xl p-4">
-            <p className="text-left whitespace-pre-wrap">{generalNotes}</p>
-          </div>
+          {notes.map(note => (
+            <div key={note.id} className="bg-white text-black p-4 rounded-xl">
+              <h3 className="font-bold mb-1">{note.title}</h3>
+              <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+            </div>
+          ))}
         </div>
       )}
 
-      {view === 'order' && (
+      {view === 'bestellen' && (
         <div>
           <h2 className="text-xl font-semibold mb-4">Bestelformulier</h2>
           <form onSubmit={handleOrderSubmit} className="bg-white text-black p-4 rounded-xl space-y-4">
-            <select value={orderForm.type} onChange={(e) => handleOrderChange('type', e.target.value)} className="w-full p-2 rounded">
+            <select
+              value={orderForm.type}
+              onChange={e => handleOrderChange('type', e.target.value)}
+              className="w-full p-2 rounded border"
+            >
               <option value="kleding">Kleding</option>
               <option value="onderdelen">Onderdelen</option>
               <option value="producten">Producten</option>
               <option value="overige">Overige</option>
             </select>
             <textarea
-              className="w-full p-2 rounded"
-              placeholder="Wat is nodig en hoeveel?"
+              className="w-full p-2 rounded border"
+              placeholder="Wat is er nodig en hoeveel?"
               value={orderForm.text}
-              onChange={(e) => handleOrderChange('text', e.target.value)}
+              onChange={e => handleOrderChange('text', e.target.value)}
               required
             ></textarea>
             <input
               type="text"
-              className="w-full p-2 rounded"
+              className="w-full p-2 rounded border"
               placeholder="Voor wie of waarvoor is het?"
               value={orderForm.target}
-              onChange={(e) => handleOrderChange('target', e.target.value)}
+              onChange={e => handleOrderChange('target', e.target.value)}
               required
             />
-            <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded w-full">Versturen</button>
+            <button type="submit" className="w-full bg-green-600 text-white py-2 rounded font-bold">Versturen</button>
           </form>
         </div>
       )}
