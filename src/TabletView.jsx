@@ -1,32 +1,54 @@
-// Finalized TabletView with improved UI layout and interactions with new ochtend/middag/avond layout
+// TabletView.jsx – toont dagtaken per tijdsblok en verwerkt herhalende taken
 
 import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import {
   getFirestore,
   collection,
   query,
   where,
   onSnapshot,
-  addDoc,
   updateDoc,
+  addDoc,
   doc,
-  Timestamp,
+  Timestamp
 } from 'firebase/firestore';
 import app from './firebaseConfig';
+
+dayjs.extend(isSameOrBefore);
 
 const db = getFirestore(app);
 
 export default function TabletView() {
   const [view, setView] = useState('vandaag');
   const [today, setToday] = useState(dayjs().format('YYYY-MM-DD'));
-  const [todayTasks, setTodayTasks] = useState([]);
-  const [weeklyTasks, setWeeklyTasks] = useState([]);
+  const [allTasks, setAllTasks] = useState([]);
   const [notes, setNotes] = useState([]);
-  const [expandedSections, setExpandedSections] = useState({});
+  const [expandedBlocks, setExpandedBlocks] = useState(['ochtend', 'middag', 'avond']);
   const [expandedNotes, setExpandedNotes] = useState([]);
+  const [agendaItems, setAgendaItems] = useState([]);
   const [orderForm, setOrderForm] = useState({ type: 'kleding', text: '', target: '' });
   const [currentTime, setCurrentTime] = useState('');
+
+  // Laad dagtaken & herhalingen
+  useEffect(() => {
+    // Alles ophalen, filtering gebeurt clientside ivm herhalingen
+    const unsubTasks = onSnapshot(collection(db, 'tasks'), (snapshot) => {
+      setAllTasks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    const unsubNotes = onSnapshot(collection(db, 'kennisbank'), (snapshot) => {
+      setNotes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    const unsubAgenda = onSnapshot(collection(db, 'weeklyAgenda'), (snapshot) => {
+      setAgendaItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => {
+      unsubTasks();
+      unsubNotes();
+      unsubAgenda();
+    };
+  }, []);
 
   useEffect(() => {
     const updateClock = () => {
@@ -46,25 +68,38 @@ export default function TabletView() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    const unsubToday = onSnapshot(
-      query(collection(db, 'tasks'), where('date', '==', today)),
-      snapshot => {
-        setTodayTasks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+  // Filter voor vandaag & herhalende taken
+  function getTodayTasks() {
+    const result = { ochtend: [], middag: [], avond: [] };
+    allTasks.forEach(task => {
+      const block = task.timeBlock || 'ochtend';
+      // Herhalend: bepaal of deze vandaag ook geldt
+      if (
+        task.date === today ||
+        (task.repeat === 'daily') ||
+        (task.repeat === 'weekly' && dayjs(task.date).day() === dayjs(today).day() && dayjs(task.date).isSameOrBefore(today)) ||
+        (task.repeat === 'monthly' && dayjs(task.date).date() === dayjs(today).date() && dayjs(task.date).isSameOrBefore(today)) ||
+        (task.repeat === 'yearly' && dayjs(task.date).format('MM-DD') === dayjs(today).format('MM-DD') && dayjs(task.date).isSameOrBefore(today))
+      ) {
+        result[block].push(task);
       }
+    });
+    return result;
+  }
+
+  const toggleBlock = (block) => {
+    setExpandedBlocks((prev) =>
+      prev.includes(block) ? prev.filter((b) => b !== block) : [...prev, block]
     );
-    const unsubWeekly = onSnapshot(collection(db, 'weeklyTasks'), snapshot => {
-      setWeeklyTasks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-    const unsubNotes = onSnapshot(collection(db, 'kennisbank'), snapshot => {
-      setNotes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => {
-      unsubToday();
-      unsubWeekly();
-      unsubNotes();
-    };
-  }, [today]);
+  };
+
+  const toggleDoneTask = async (taskId, current) => {
+    await updateDoc(doc(db, 'tasks', taskId), { done: !current });
+  };
+
+  const toggleNoteExpand = (id) => {
+    setExpandedNotes(prev => prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id]);
+  };
 
   const handleOrderChange = (field, value) => {
     setOrderForm({ ...orderForm, [field]: value });
@@ -82,44 +117,18 @@ export default function TabletView() {
     alert('Bestelling verzonden!');
   };
 
-  const toggleDoneTask = async (taskId, current, isWeekly = false) => {
-    await updateDoc(doc(db, isWeekly ? 'weeklyTasks' : 'tasks', taskId), { done: !current });
-  };
-
-  const toggleNoteExpand = (id) => {
-    setExpandedNotes(prev => prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id]);
-  };
-
-  const toggleSectionExpand = (period) => {
-    setExpandedSections(prev => ({ ...prev, [period]: !prev[period] }));
-  };
-
-  const TaskItem = ({ id, text, done, notes, isWeekly }) => (
-    <div className="bg-white rounded-xl p-4 shadow flex items-start space-x-4 border border-gray-200">
-      <button
-        onClick={() => toggleDoneTask(id, done, isWeekly)}
-        className={`w-6 h-6 rounded-full border-2 mt-1 flex items-center justify-center ${done ? 'border-green-500 bg-green-500' : 'border-gray-400'}`}
-      >
-        {done && <div className="w-2.5 h-2.5 bg-white rounded-full" />}
-      </button>
-      <div>
-        <p className={`font-medium ${done ? 'line-through text-gray-400' : 'text-gray-800'}`}>{text}</p>
-        {notes && <p className="text-sm text-gray-500 italic mt-1">{notes}</p>}
-      </div>
-    </div>
-  );
-
   const navTabs = [
     { id: 'vandaag', label: 'Vandaag', icon: '📅' },
-    { id: 'weektaken', label: 'Weektaken', icon: '🗓' },
+    { id: 'agenda', label: 'Weekagenda', icon: '🗓' },
     { id: 'kennisbank', label: 'Kennisbank', icon: '📚' },
     { id: 'bestellen', label: 'Bestellen', icon: '🛒' },
   ];
 
-  const periods = ['ochtend', 'middag', 'avond'];
+  const todayBlocks = getTodayTasks();
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 text-gray-800 relative pb-24">
+      {/* Header */}
       <div className="flex justify-between items-center px-4 py-4 shadow bg-white">
         <img
           src="https://23g-sharedhosting-grit-wordpress.s3.eu-west-1.amazonaws.com/wp-content/uploads/sites/13/2023/11/30093636/Logo_kort_wit.png"
@@ -130,56 +139,59 @@ export default function TabletView() {
         <button className="text-sm text-red-600 font-semibold">Log uit</button>
       </div>
 
+      {/* Main view */}
       <div className="flex-1 px-4 py-4 overflow-y-auto">
+        {/* Vandaag met tijdsblokken */}
         {view === 'vandaag' && (
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold mb-2">Taken voor {dayjs(today).format('dddd DD MMMM')}</h2>
-            {periods.map(period => {
-              const tasks = todayTasks.filter(t => t.period === period);
-              const isExpanded = expandedSections[period];
-              return (
-                <div key={period} className="rounded-xl overflow-hidden border border-gray-200">
-                  <button onClick={() => toggleSectionExpand(period)} className={`w-full text-left px-4 py-3 font-semibold border-b ${isExpanded ? 'bg-green-600 text-white' : 'bg-white text-black'}`}>
-                    {period.charAt(0).toUpperCase() + period.slice(1)}
-                  </button>
-                  {isExpanded && (
-                    <div className="bg-white p-4 space-y-3">
-                      {tasks.length > 0 ? tasks.map(task => (
-                        <TaskItem key={task.id} id={task.id} text={task.text} notes={task.notes} done={task.done} />
-                      )) : <p className="text-sm italic text-gray-500">Geen taken</p>}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            <h2 className="text-xl font-semibold mb-2">Dagplanning {dayjs(today).format('dddd DD MMMM')}</h2>
+            {['ochtend', 'middag', 'avond'].map(block => (
+              <div key={block} className="mb-2 rounded-xl overflow-hidden border border-gray-200">
+                <button
+                  className={`w-full text-left px-4 py-3 font-semibold border-b ${expandedBlocks.includes(block) ? 'bg-green-600 text-white' : 'bg-white text-black'}`}
+                  onClick={() => toggleBlock(block)}
+                >
+                  {block.charAt(0).toUpperCase() + block.slice(1)}
+                </button>
+                {expandedBlocks.includes(block) && (
+                  <div className="bg-white p-4 space-y-3">
+                    {todayBlocks[block].length > 0 ? todayBlocks[block].map(task => (
+                      <div key={task.id} className="bg-white rounded-xl p-4 shadow flex items-start space-x-4 border border-gray-200">
+                        <button
+                          onClick={() => toggleDoneTask(task.id, task.done)}
+                          className={`w-6 h-6 rounded-full border-2 mt-1 flex items-center justify-center ${task.done ? 'border-green-500 bg-green-500' : 'border-gray-400'}`}
+                        >
+                          {task.done && <div className="w-2.5 h-2.5 bg-white rounded-full" />}
+                        </button>
+                        <div>
+                          <p className={`font-medium ${task.done ? 'line-through text-gray-400' : 'text-gray-800'}`}>{task.text}</p>
+                          {task.notes && <p className="text-sm text-gray-500 italic mt-1">{task.notes}</p>}
+                        </div>
+                      </div>
+                    )) : <p className="text-sm italic text-gray-400">Geen taken voor dit blok.</p>}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
 
-        {view === 'weektaken' && (
+        {/* Weekagenda */}
+        {view === 'agenda' && (
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold mb-2">Weektaken</h2>
-            {['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'].map((dayName, i) => {
-              const date = dayjs().startOf('week').add(i + 1, 'day').format('YYYY-MM-DD');
-              const items = weeklyTasks.filter(t => t.date === date);
-              const isExpanded = expandedSections[date];
-              return (
-                <div key={dayName} className="rounded-xl overflow-hidden border border-gray-200">
-                  <button onClick={() => toggleSectionExpand(date)} className={`w-full text-left px-4 py-3 font-semibold border-b ${isExpanded ? 'bg-green-600 text-white' : 'bg-white text-black'}`}>
-                    {dayjs(date).format('dddd DD MMMM')}
-                  </button>
-                  {isExpanded && (
-                    <div className="bg-white p-4 space-y-3">
-                      {items.length > 0 ? items.map(task => (
-                        <TaskItem key={task.id} id={task.id} text={task.text} notes={task.notes} done={task.done} isWeekly={true} />
-                      )) : <p className="text-sm italic text-gray-500">Geen taken</p>}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            <h2 className="text-xl font-semibold mb-2">Weekagenda</h2>
+            {agendaItems.length === 0 && <p className="text-sm italic text-gray-500">Geen agendapunten</p>}
+            {agendaItems.map(item => (
+              <div key={item.id} className="bg-white rounded-xl p-4 shadow border border-gray-200 mb-2">
+                <div className="font-bold text-green-700">{item.title}</div>
+                {item.description && <div className="text-sm text-gray-600">{item.description}</div>}
+                <div className="text-xs text-gray-500 italic">{dayjs(item.date).format('dddd DD MMM YYYY')}{item.time ? ` • ${item.time}` : ''} {item.repeat && item.repeat !== 'none' ? `• ${item.repeat}` : ''}</div>
+              </div>
+            ))}
           </div>
         )}
 
+        {/* Kennisbank */}
         {view === 'kennisbank' && (
           <div className="space-y-4">
             <h2 className="text-xl font-semibold">Kennisbank</h2>
@@ -204,6 +216,7 @@ export default function TabletView() {
           </div>
         )}
 
+        {/* Bestellen */}
         {view === 'bestellen' && (
           <div>
             <h2 className="text-xl font-semibold mb-4">Bestelformulier</h2>
@@ -239,6 +252,7 @@ export default function TabletView() {
         )}
       </div>
 
+      {/* Bottom Nav */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around py-3 shadow-inner z-10">
         {navTabs.map(tab => (
           <button

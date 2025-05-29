@@ -17,23 +17,28 @@ const db = getFirestore(app);
 
 export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState('day');
-  // Daily Tasks
+
+  // Dag taken
   const [allTasks, setAllTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
   const [taskNote, setTaskNote] = useState('');
   const [taskDate, setTaskDate] = useState(dayjs().format('YYYY-MM-DD'));
-  const [taskTimeBlock, setTaskTimeBlock] = useState('ochtend'); // <-- Nieuw!
-  // Weekly Agenda
+  const [taskTimeBlock, setTaskTimeBlock] = useState('ochtend');
+  const [taskRepeat, setTaskRepeat] = useState('none');
+
+  // Week agenda (planningspunten)
   const [agendaItems, setAgendaItems] = useState([]);
   const [agendaTitle, setAgendaTitle] = useState('');
   const [agendaDescription, setAgendaDescription] = useState('');
   const [agendaDate, setAgendaDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [agendaTime, setAgendaTime] = useState('');
   const [agendaRepeat, setAgendaRepeat] = useState('none');
+
   // Kennisbank
   const [kennisbank, setKennisbank] = useState([]);
   const [newTabTitle, setNewTabTitle] = useState('');
   const [newTabContent, setNewTabContent] = useState('');
+
   // Orders
   const [orders, setOrders] = useState([]);
 
@@ -65,11 +70,13 @@ export default function AdminPanel() {
       notes: taskNote,
       done: false,
       date: taskDate,
-      timeBlock: taskTimeBlock // <-- Nieuw!
+      timeBlock: taskTimeBlock,
+      repeat: taskRepeat
     });
     setNewTask('');
     setTaskNote('');
     setTaskTimeBlock('ochtend');
+    setTaskRepeat('none');
   };
 
   const addAgendaItem = async () => {
@@ -110,7 +117,7 @@ export default function AdminPanel() {
     setNewTabContent('');
   };
 
-  // Groepeer taken per dag en per tijdsblok
+  // Taken groeperen per datum, en per tijdsblok binnen die datum
   const groupedTasks = allTasks.reduce((days, task) => {
     if (!days[task.date]) days[task.date] = { ochtend: [], middag: [], avond: [] };
     const block = task.timeBlock || 'ochtend';
@@ -146,13 +153,19 @@ export default function AdminPanel() {
             <option value="middag">Middag</option>
             <option value="avond">Avond</option>
           </select>
+          <select value={taskRepeat} onChange={e => setTaskRepeat(e.target.value)} className="p-2 border border-gray-300 rounded w-full mb-2">
+            <option value="none">Niet herhalen</option>
+            <option value="daily">Dagelijks</option>
+            <option value="weekly">Wekelijks</option>
+            <option value="monthly">Maandelijks</option>
+            <option value="yearly">Jaarlijks</option>
+          </select>
           <input type="text" placeholder="Nieuwe taak" value={newTask} onChange={(e) => setNewTask(e.target.value)} className="p-2 border border-gray-300 rounded w-full mb-2" />
           <input type="text" placeholder="Instructies" value={taskNote} onChange={(e) => setTaskNote(e.target.value)} className="p-2 border border-gray-300 rounded w-full mb-2" />
           <button onClick={addTask} className="w-full bg-white text-black border border-gray-300 hover:border-green-500 py-2 rounded font-bold mb-4">Toevoegen</button>
           {Object.keys(groupedTasks).map(date => (
             <div key={date} className="mb-6">
               <h3 className="text-lg font-semibold">{dayjs(date).format('DD MMM YYYY')}</h3>
-              {/* Per tijdsblok */}
               {['ochtend', 'middag', 'avond'].map(block => (
                 groupedTasks[date][block].length > 0 && (
                   <div key={block} className="mb-3">
@@ -162,6 +175,9 @@ export default function AdminPanel() {
                         <div>
                           <p className={task.done ? 'line-through text-gray-400' : 'text-gray-800'}>{task.text}</p>
                           <small className="text-gray-500">{task.notes}</small>
+                          {task.repeat && task.repeat !== 'none' && (
+                            <div className="text-xs text-gray-500 italic mt-1">Herhaal: {task.repeat}</div>
+                          )}
                         </div>
                         <div className="space-x-2">
                           <button onClick={() => toggleDone(task.id, 'tasks', task.done)} className="text-sm px-3 py-1 rounded border border-gray-300 hover:border-green-500">{task.done ? 'Ongedaan' : 'Klaar'}</button>
@@ -253,4 +269,3 @@ export default function AdminPanel() {
     </div>
   );
 }
-
