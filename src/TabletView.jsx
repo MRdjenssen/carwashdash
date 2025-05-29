@@ -1,4 +1,4 @@
-// Finalized TabletView with improved UI layout and interactions
+// Finalized TabletView with improved UI layout and interactions with new ochtend/middag/avond layout
 
 import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
@@ -23,7 +23,7 @@ export default function TabletView() {
   const [todayTasks, setTodayTasks] = useState([]);
   const [weeklyTasks, setWeeklyTasks] = useState([]);
   const [notes, setNotes] = useState([]);
-  const [expandedDays, setExpandedDays] = useState([]);
+  const [expandedSections, setExpandedSections] = useState({});
   const [expandedNotes, setExpandedNotes] = useState([]);
   const [orderForm, setOrderForm] = useState({ type: 'kleding', text: '', target: '' });
   const [currentTime, setCurrentTime] = useState('');
@@ -82,16 +82,16 @@ export default function TabletView() {
     alert('Bestelling verzonden!');
   };
 
-  const toggleDayExpand = (date) => {
-    setExpandedDays(prev => prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]);
-  };
-
   const toggleDoneTask = async (taskId, current, isWeekly = false) => {
     await updateDoc(doc(db, isWeekly ? 'weeklyTasks' : 'tasks', taskId), { done: !current });
   };
 
   const toggleNoteExpand = (id) => {
     setExpandedNotes(prev => prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id]);
+  };
+
+  const toggleSectionExpand = (period) => {
+    setExpandedSections(prev => ({ ...prev, [period]: !prev[period] }));
   };
 
   const TaskItem = ({ id, text, done, notes, isWeekly }) => (
@@ -116,9 +116,10 @@ export default function TabletView() {
     { id: 'bestellen', label: 'Bestellen', icon: '🛒' },
   ];
 
+  const periods = ['ochtend', 'middag', 'avond'];
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 text-gray-800 relative pb-24">
-      {/* Header */}
       <div className="flex justify-between items-center px-4 py-4 shadow bg-white">
         <img
           src="https://23g-sharedhosting-grit-wordpress.s3.eu-west-1.amazonaws.com/wp-content/uploads/sites/13/2023/11/30093636/Logo_kort_wit.png"
@@ -129,14 +130,28 @@ export default function TabletView() {
         <button className="text-sm text-red-600 font-semibold">Log uit</button>
       </div>
 
-      {/* Main view */}
       <div className="flex-1 px-4 py-4 overflow-y-auto">
         {view === 'vandaag' && (
           <div className="space-y-4">
             <h2 className="text-xl font-semibold mb-2">Taken voor {dayjs(today).format('dddd DD MMMM')}</h2>
-            {todayTasks.map(task => (
-              <TaskItem key={task.id} id={task.id} text={task.text} notes={task.notes} done={task.done} />
-            ))}
+            {periods.map(period => {
+              const tasks = todayTasks.filter(t => t.period === period);
+              const isExpanded = expandedSections[period];
+              return (
+                <div key={period} className="rounded-xl overflow-hidden border border-gray-200">
+                  <button onClick={() => toggleSectionExpand(period)} className={`w-full text-left px-4 py-3 font-semibold border-b ${isExpanded ? 'bg-green-600 text-white' : 'bg-white text-black'}`}>
+                    {period.charAt(0).toUpperCase() + period.slice(1)}
+                  </button>
+                  {isExpanded && (
+                    <div className="bg-white p-4 space-y-3">
+                      {tasks.length > 0 ? tasks.map(task => (
+                        <TaskItem key={task.id} id={task.id} text={task.text} notes={task.notes} done={task.done} />
+                      )) : <p className="text-sm italic text-gray-500">Geen taken</p>}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -146,10 +161,10 @@ export default function TabletView() {
             {['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'].map((dayName, i) => {
               const date = dayjs().startOf('week').add(i + 1, 'day').format('YYYY-MM-DD');
               const items = weeklyTasks.filter(t => t.date === date);
-              const isExpanded = expandedDays.includes(date);
+              const isExpanded = expandedSections[date];
               return (
                 <div key={dayName} className="rounded-xl overflow-hidden border border-gray-200">
-                  <button onClick={() => toggleDayExpand(date)} className={`w-full text-left px-4 py-3 font-semibold border-b ${isExpanded ? 'bg-green-600 text-white' : 'bg-white text-black'}`}>
+                  <button onClick={() => toggleSectionExpand(date)} className={`w-full text-left px-4 py-3 font-semibold border-b ${isExpanded ? 'bg-green-600 text-white' : 'bg-white text-black'}`}>
                     {dayjs(date).format('dddd DD MMMM')}
                   </button>
                   {isExpanded && (
@@ -224,7 +239,6 @@ export default function TabletView() {
         )}
       </div>
 
-      {/* Bottom Nav */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around py-3 shadow-inner z-10">
         {navTabs.map(tab => (
           <button
