@@ -22,6 +22,7 @@ export default function AdminPanel() {
   const [newTask, setNewTask] = useState('');
   const [taskNote, setTaskNote] = useState('');
   const [taskDate, setTaskDate] = useState(dayjs().format('YYYY-MM-DD'));
+  const [taskTimeBlock, setTaskTimeBlock] = useState('ochtend'); // <-- Nieuw!
   // Weekly Agenda
   const [agendaItems, setAgendaItems] = useState([]);
   const [agendaTitle, setAgendaTitle] = useState('');
@@ -63,10 +64,12 @@ export default function AdminPanel() {
       text: newTask,
       notes: taskNote,
       done: false,
-      date: taskDate
+      date: taskDate,
+      timeBlock: taskTimeBlock // <-- Nieuw!
     });
     setNewTask('');
     setTaskNote('');
+    setTaskTimeBlock('ochtend');
   };
 
   const addAgendaItem = async () => {
@@ -107,10 +110,12 @@ export default function AdminPanel() {
     setNewTabContent('');
   };
 
-  const groupedTasks = allTasks.reduce((groups, task) => {
-    if (!groups[task.date]) groups[task.date] = [];
-    groups[task.date].push(task);
-    return groups;
+  // Groepeer taken per dag en per tijdsblok
+  const groupedTasks = allTasks.reduce((days, task) => {
+    if (!days[task.date]) days[task.date] = { ochtend: [], middag: [], avond: [] };
+    const block = task.timeBlock || 'ochtend';
+    days[task.date][block].push(task);
+    return days;
   }, {});
 
   return (
@@ -136,23 +141,36 @@ export default function AdminPanel() {
         <div>
           <h2 className="text-xl font-semibold mb-4">Nieuwe Dagtaak</h2>
           <input type="date" value={taskDate} onChange={(e) => setTaskDate(e.target.value)} className="p-2 border border-gray-300 rounded w-full mb-2" />
+          <select value={taskTimeBlock} onChange={e => setTaskTimeBlock(e.target.value)} className="p-2 border border-gray-300 rounded w-full mb-2">
+            <option value="ochtend">Ochtend</option>
+            <option value="middag">Middag</option>
+            <option value="avond">Avond</option>
+          </select>
           <input type="text" placeholder="Nieuwe taak" value={newTask} onChange={(e) => setNewTask(e.target.value)} className="p-2 border border-gray-300 rounded w-full mb-2" />
           <input type="text" placeholder="Instructies" value={taskNote} onChange={(e) => setTaskNote(e.target.value)} className="p-2 border border-gray-300 rounded w-full mb-2" />
           <button onClick={addTask} className="w-full bg-white text-black border border-gray-300 hover:border-green-500 py-2 rounded font-bold mb-4">Toevoegen</button>
           {Object.keys(groupedTasks).map(date => (
             <div key={date} className="mb-6">
               <h3 className="text-lg font-semibold">{dayjs(date).format('DD MMM YYYY')}</h3>
-              {groupedTasks[date].map(task => (
-                <div key={task.id} className="bg-white border border-gray-200 p-4 rounded my-2 flex justify-between items-center">
-                  <div>
-                    <p className={task.done ? 'line-through text-gray-400' : 'text-gray-800'}>{task.text}</p>
-                    <small className="text-gray-500">{task.notes}</small>
+              {/* Per tijdsblok */}
+              {['ochtend', 'middag', 'avond'].map(block => (
+                groupedTasks[date][block].length > 0 && (
+                  <div key={block} className="mb-3">
+                    <h4 className="font-bold capitalize">{block}</h4>
+                    {groupedTasks[date][block].map(task => (
+                      <div key={task.id} className="bg-white border border-gray-200 p-4 rounded my-2 flex justify-between items-center">
+                        <div>
+                          <p className={task.done ? 'line-through text-gray-400' : 'text-gray-800'}>{task.text}</p>
+                          <small className="text-gray-500">{task.notes}</small>
+                        </div>
+                        <div className="space-x-2">
+                          <button onClick={() => toggleDone(task.id, 'tasks', task.done)} className="text-sm px-3 py-1 rounded border border-gray-300 hover:border-green-500">{task.done ? 'Ongedaan' : 'Klaar'}</button>
+                          <button onClick={() => deleteItem(task.id, 'tasks')} className="text-sm px-3 py-1 rounded border border-red-300 text-red-600 hover:border-red-600">Verwijder</button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="space-x-2">
-                    <button onClick={() => toggleDone(task.id, 'tasks', task.done)} className="text-sm px-3 py-1 rounded border border-gray-300 hover:border-green-500">{task.done ? 'Ongedaan' : 'Klaar'}</button>
-                    <button onClick={() => deleteItem(task.id, 'tasks')} className="text-sm px-3 py-1 rounded border border-red-300 text-red-600 hover:border-red-600">Verwijder</button>
-                  </div>
-                </div>
+                )
               ))}
             </div>
           ))}
@@ -235,3 +253,4 @@ export default function AdminPanel() {
     </div>
   );
 }
+
