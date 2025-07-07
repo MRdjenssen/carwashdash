@@ -14,11 +14,17 @@ import {
   uploadBytes,
   getDownloadURL
 } from "firebase/storage";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signOut
+} from "firebase/auth";
 import app from "./firebaseConfig";
 import dayjs from "dayjs";
 
 const db = getFirestore(app);
 const storage = getStorage(app);
+const auth = getAuth(app);
 
 const periodTabs = [
   { id: "daily", label: "Dagelijks" },
@@ -31,10 +37,25 @@ const dayBlocks = ["ochtend", "middag", "avond"];
 const kennisbankCategoriesDefault = ["Algemeen", "Materiaal", "Personeel"];
 
 export default function AdminPanel() {
-  // Navigation
+  // --- AUTH ---
+  const [user, setUser] = useState(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setChecking(false);
+    });
+    return unsub;
+  }, []);
+
+  if (checking) return <div className="p-10">Bezig met inloggen...</div>;
+  if (!user) return <div className="p-10 text-red-600">Niet ingelogd. Log eerst in als admin.</div>;
+
+  // --- NAVIGATION ---
   const [activePage, setActivePage] = useState("day");
 
-  // Tasks
+  // --- TASKS ---
   const [tasks, setTasks] = useState([]);
   const [selectedPeriod, setSelectedPeriod] = useState("daily");
   const [addTaskModal, setAddTaskModal] = useState(false);
@@ -47,16 +68,15 @@ export default function AdminPanel() {
     repeat: "daily"
   });
 
-  // Agenda
+  // --- AGENDA ---
   const [agenda, setAgenda] = useState([]);
   const [agendaForm, setAgendaForm] = useState({
     title: "",
     date: dayjs().format("YYYY-MM-DD")
   });
   const [showAgendaModal, setShowAgendaModal] = useState(false);
-  const [calendarDate, setCalendarDate] = useState(dayjs().format("YYYY-MM-DD"));
 
-  // Kennisbank
+  // --- KENNISBANK ---
   const [kennisbank, setKennisbank] = useState([]);
   const [kennisbankCategories, setKennisbankCategories] = useState(kennisbankCategoriesDefault);
   const [selectedKennisbankCat, setSelectedKennisbankCat] = useState(kennisbankCategoriesDefault[0]);
@@ -69,10 +89,10 @@ export default function AdminPanel() {
   });
   const [kennisImageFile, setKennisImageFile] = useState(null);
 
-  // Orders
+  // --- ORDERS ---
   const [orders, setOrders] = useState([]);
 
-  // --- Loaders ---
+  // --- LOAD DATA ---
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "tasks"), (snap) => {
       setTasks(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -105,7 +125,7 @@ export default function AdminPanel() {
     return unsub;
   }, []);
 
-  // Group tasks by period and block
+  // --- GROUP TASKS ---
   const groupedTasks = {};
   for (let tab of periodTabs) {
     groupedTasks[tab.id] = { ochtend: [], middag: [], avond: [] };
@@ -117,7 +137,7 @@ export default function AdminPanel() {
     }
   });
 
-  // Handlers -- TASKS
+  // --- TASK HANDLERS ---
   const openAddTask = () => {
     setTaskForm({
       text: "",
@@ -149,7 +169,7 @@ export default function AdminPanel() {
     await deleteDoc(doc(db, "tasks", id));
   };
 
-  // Handlers -- AGENDA
+  // --- AGENDA HANDLERS ---
   const openAddAgenda = (date) => {
     setAgendaForm({
       title: "",
@@ -175,7 +195,7 @@ export default function AdminPanel() {
     return agenda.filter(a => a.date === dateStr);
   }
 
-  // Handlers -- KENNISBANK
+  // --- KENNISBANK HANDLERS ---
   const openAddKennis = () => {
     setKennisForm({
       title: "",
@@ -211,7 +231,7 @@ export default function AdminPanel() {
     await deleteDoc(doc(db, "kennisbank", id));
   };
 
-  // Orders
+  // --- ORDERS ---
   const handleArchiveOrder = async (id, archived) => {
     await updateDoc(doc(db, "orders", id), { archived: !archived });
   };
@@ -236,7 +256,10 @@ export default function AdminPanel() {
           <SidebarButton label="Bestellingen" icon="🛒" active={activePage === "orders"} onClick={() => setActivePage("orders")} />
           <SidebarButton label="Overzicht" icon="📊" active={activePage === "analytics"} onClick={() => setActivePage("analytics")} />
         </nav>
-        <button className="mt-auto mb-6 mx-6 py-2 bg-white text-green-700 rounded font-semibold hover:bg-green-100">
+        <button
+          className="mt-auto mb-6 mx-6 py-2 bg-white text-green-700 rounded font-semibold hover:bg-green-100"
+          onClick={() => signOut(auth)}
+        >
           Log uit
         </button>
       </aside>
