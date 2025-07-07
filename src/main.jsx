@@ -1,25 +1,17 @@
 import './index.css';
-import { StrictMode, useState } from 'react';
+import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import TabletView from './TabletView.jsx';
-import AdminLogin from './AdminLogin.jsx';
 import AdminPanel from './AdminPanel.jsx';
 
+// This function picks which page to show based on the URL
 function App() {
-  const [loggedIn, setLoggedIn] = useState(false);
   const isAdmin = window.location.pathname === '/admin';
-
-  if (isAdmin && !loggedIn) {
-    return <AdminLogin onLogin={() => setLoggedIn(true)} />;
-  }
-
-  if (isAdmin && loggedIn) {
-    return <AdminPanel />;
-  }
-
+  if (isAdmin) return <AdminPanel />;
   return <TabletView />;
 }
 
+// This renders your app to the webpage
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />
