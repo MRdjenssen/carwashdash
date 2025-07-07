@@ -1,5 +1,4 @@
-import React from "react";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   getFirestore,
   collection,
@@ -10,12 +9,6 @@ import {
   onSnapshot
 } from "firebase/firestore";
 import {
-  getStorage,
-  ref,
-  uploadBytes,
-  getDownloadURL
-} from "firebase/storage";
-import {
   getAuth,
   onAuthStateChanged,
   signOut
@@ -24,7 +17,6 @@ import app from "./firebaseConfig";
 import dayjs from "dayjs";
 
 const db = getFirestore(app);
-const storage = getStorage(app);
 const auth = getAuth(app);
 
 const periodTabs = [
@@ -85,10 +77,8 @@ export default function AdminPanel() {
   const [kennisForm, setKennisForm] = useState({
     title: "",
     content: "",
-    category: kennisbankCategoriesDefault[0],
-    imageUrl: ""
+    category: kennisbankCategoriesDefault[0]
   });
-  const [kennisImageFile, setKennisImageFile] = useState(null);
 
   // --- ORDERS ---
   const [orders, setOrders] = useState([]);
@@ -201,29 +191,15 @@ export default function AdminPanel() {
     setKennisForm({
       title: "",
       content: "",
-      category: kennisbankCategories[0] || "Algemeen",
-      imageUrl: ""
+      category: kennisbankCategories[0] || "Algemeen"
     });
-    setKennisImageFile(null);
     setAddKennisModal(true);
   };
 
-  async function uploadImage(file) {
-    if (!file) return "";
-    const imageRef = ref(storage, `kennisbank/${Date.now()}_${file.name}`);
-    await uploadBytes(imageRef, file);
-    return await getDownloadURL(imageRef);
-  }
-
   const handleAddKennis = async (e) => {
     e.preventDefault();
-    let url = "";
-    if (kennisImageFile) {
-      url = await uploadImage(kennisImageFile);
-    }
     await addDoc(collection(db, "kennisbank"), {
       ...kennisForm,
-      imageUrl: url,
     });
     setAddKennisModal(false);
   };
@@ -428,9 +404,6 @@ export default function AdminPanel() {
                       <div className="font-bold text-lg">{tab.title}</div>
                       <div className="text-gray-500 text-sm mb-2">Categorie: {tab.category}</div>
                       <div className="mb-3 whitespace-pre-line">{tab.content}</div>
-                      {tab.imageUrl && (
-                        <img src={tab.imageUrl} alt={tab.title} className="h-20 w-20 object-cover rounded shadow mb-2" />
-                      )}
                     </div>
                     <div>
                       <button className="text-red-600 border px-3 py-1 rounded hover:bg-red-50" onClick={() => handleDeleteKennis(tab.id)}>Verwijder</button>
@@ -449,10 +422,6 @@ export default function AdminPanel() {
                   <select className="w-full p-2 border rounded" value={kennisForm.category} onChange={e => setKennisForm(f => ({ ...f, category: e.target.value }))}>
                     {kennisbankCategories.map(c => <option value={c} key={c}>{c}</option>)}
                   </select>
-                  <input type="file" accept="image/*"
-                    onChange={e => setKennisImageFile(e.target.files[0])}
-                    className="w-full border rounded"
-                  />
                   <button className="w-full py-2 bg-green-700 text-white rounded font-semibold">Toevoegen</button>
                 </form>
               </Modal>
