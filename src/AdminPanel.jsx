@@ -38,6 +38,7 @@ export default function AdminPanel() {
   const [tasks, setTasks] = useState([]);
   const [selectedPeriod, setSelectedPeriod] = useState("daily");
   const [addTaskModal, setAddTaskModal] = useState(false);
+  const [taskSubmitting, setTaskSubmitting] = useState(false);
   const [taskForm, setTaskForm] = useState({
     text: "",
     notes: "",
@@ -131,11 +132,17 @@ export default function AdminPanel() {
   const handleAddTask = async (e) => {
     e.preventDefault();
     if (!taskForm.text) return;
-    await addDoc(collection(db, "tasks"), {
-      ...taskForm,
-      done: false,
-    });
-    setAddTaskModal(false);
+    setTaskSubmitting(true);
+    try {
+      await addDoc(collection(db, "tasks"), {
+        ...taskForm,
+        done: false,
+      });
+      setAddTaskModal(false);
+    } catch (err) {
+      alert("Fout bij opslaan: " + err.message);
+    }
+    setTaskSubmitting(false);
   };
 
   const handleDeleteTask = async (id) => {
@@ -180,7 +187,6 @@ export default function AdminPanel() {
     setAddKennisModal(true);
   };
 
-  // upload image, return url
   async function uploadImage(file) {
     if (!file) return "";
     const imageRef = ref(storage, `kennisbank/${Date.now()}_${file.name}`);
@@ -300,7 +306,13 @@ export default function AdminPanel() {
                   <select className="w-full p-2 border rounded" value={taskForm.repeat} onChange={e => setTaskForm(f => ({ ...f, repeat: e.target.value }))}>
                     {periodTabs.map(t => <option value={t.id} key={t.id}>{t.label}</option>)}
                   </select>
-                  <button className="w-full py-2 bg-green-700 text-white rounded font-semibold">Toevoegen</button>
+                  <button
+                    type="submit"
+                    className="w-full py-2 bg-green-700 text-white rounded font-semibold"
+                    disabled={taskSubmitting}
+                  >
+                    {taskSubmitting ? "Toevoegen..." : "Toevoegen"}
+                  </button>
                 </form>
               </Modal>
             )}
@@ -476,12 +488,17 @@ function SidebarButton({ label, icon, active, ...props }) {
   );
 }
 
-// Simple modal overlay
+// Simple modal overlay (with close button OUTSIDE the form)
 function Modal({ children, onClose }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/20 flex items-center justify-center">
       <div className="relative bg-white p-6 rounded-xl shadow-xl min-w-[320px] max-w-full">
-        <button className="absolute top-3 right-3 text-2xl" onClick={onClose}>×</button>
+        <button
+          type="button"
+          className="absolute top-3 right-3 text-2xl"
+          onClick={onClose}
+          tabIndex={0}
+        >×</button>
         {children}
       </div>
     </div>
