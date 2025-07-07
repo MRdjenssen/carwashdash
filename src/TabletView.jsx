@@ -1,5 +1,4 @@
-// TabletView.jsx – toont dagtaken per tijdsblok en verwerkt herhalende taken
-
+import React from "react";
 import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
