@@ -44,3 +44,4 @@ export default function AdminPanel() {
 
   if (checking) return <div className="p-10">Bezig met inloggen...</div>;
   if (!user) return <div className="p-10 text-red-600">Niet ingelogd. Log eerst in als admin.</div>;
+}
