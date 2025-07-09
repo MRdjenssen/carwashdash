@@ -26,6 +26,8 @@ const periodTabs = [
   { id: "monthly", label: "Maandelijks" },
   { id: "yearly", label: "Jaarlijks" },
 ];
+const dayBlocks = ["ochtend", "middag", "avond"];
+const kennisbankCategoriesDefault = ["Algemeen", "Materiaal", "Personeel"];
 
 export default function AdminPanel() {
   // --- AUTH ---
@@ -59,10 +61,58 @@ export default function AdminPanel() {
     repeat: "daily"
   });
 
+  // --- AGENDA ---
+  const [agenda, setAgenda] = useState([]);
+  const [agendaForm, setAgendaForm] = useState({
+    title: "",
+    date: dayjs().format("YYYY-MM-DD")
+  });
+  const [showAgendaModal, setShowAgendaModal] = useState(false);
+
+  // --- KENNISBANK ---
+  const [kennisbank, setKennisbank] = useState([]);
+  const [kennisbankCategories, setKennisbankCategories] = useState(kennisbankCategoriesDefault);
+  const [selectedKennisbankCat, setSelectedKennisbankCat] = useState(kennisbankCategoriesDefault[0]);
+  const [addKennisModal, setAddKennisModal] = useState(false);
+  const [kennisForm, setKennisForm] = useState({
+    title: "",
+    content: "",
+    category: kennisbankCategoriesDefault[0],
+    // imageUrl: ""  // REMOVE imageUrl for now
+  });
+
+  // --- ORDERS ---
+  const [orders, setOrders] = useState([]);
+
   // --- LOAD DATA ---
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "tasks"), (snap) => {
       setTasks(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "weeklyAgenda"), (snap) => {
+      setAgenda(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "kennisbank"), (snap) => {
+      setKennisbank(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      // Also auto-fill categories
+      const cats = new Set(kennisbankCategoriesDefault);
+      snap.docs.forEach(d => d.data().category && cats.add(d.data().category));
+      setKennisbankCategories(Array.from(cats));
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "orders"), (snap) => {
+      setOrders(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
     return unsub;
   }, []);
@@ -111,16 +161,82 @@ export default function AdminPanel() {
     await deleteDoc(doc(db, "tasks", id));
   };
 
+  // --- AGENDA HANDLERS ---
+  const openAddAgenda = (date) => {
+    setAgendaForm({
+      title: "",
+      date: date || dayjs().format("YYYY-MM-DD")
+    });
+    setShowAgendaModal(true);
+  };
+
+  const handleAddAgenda = async (e) => {
+    e.preventDefault();
+    if (!agendaForm.title) return;
+    await addDoc(collection(db, "weeklyAgenda"), {
+      ...agendaForm
+    });
+    setShowAgendaModal(false);
+  };
+
+  const handleDeleteAgenda = async (id) => {
+    await deleteDoc(doc(db, "weeklyAgenda", id));
+  };
+
+  function getAgendaOnDate(dateStr) {
+    return agenda.filter(a => a.date === dateStr);
+  }
+
+  // --- KENNISBANK HANDLERS ---
+  const openAddKennis = () => {
+    setKennisForm({
+      title: "",
+      content: "",
+      category: kennisbankCategories[0] || "Algemeen",
+      // imageUrl: ""
+    });
+    setAddKennisModal(true);
+  };
+
+  // REMOVED uploadImage and knowledge image logic
+
+  const handleAddKennis = async (e) => {
+    e.preventDefault();
+    await addDoc(collection(db, "kennisbank"), {
+      ...kennisForm,
+      // imageUrl: "",  // Don't include imageUrl for now
+    });
+    setAddKennisModal(false);
+  };
+
+  const handleDeleteKennis = async (id) => {
+    await deleteDoc(doc(db, "kennisbank", id));
+  };
+
+  // --- ORDERS ---
+  const handleArchiveOrder = async (id, archived) => {
+    await updateDoc(doc(db, "orders", id), { archived: !archived });
+  };
+
   // ---- UI ----
   return (
     <div className="min-h-screen flex bg-gray-50">
       {/* Sidebar */}
       <aside className="w-64 bg-green-700 text-white flex flex-col">
         <div className="px-6 py-8 flex items-center gap-2">
+          <img
+            src="https://23g-sharedhosting-grit-wordpress.s3.eu-west-1.amazonaws.com/wp-content/uploads/sites/13/2023/11/30093636/Logo_kort_wit.png"
+            alt="Logo"
+            className="h-10 rounded bg-white p-1"
+          />
           <span className="font-bold text-xl">CarwashDash</span>
         </div>
         <nav className="flex-1 flex flex-col gap-2 px-2">
           <SidebarButton label="Dag Taken" icon="📅" active={activePage === "day"} onClick={() => setActivePage("day")} />
+          <SidebarButton label="Agenda" icon="🗓️" active={activePage === "week"} onClick={() => setActivePage("week")} />
+          <SidebarButton label="Kennisbank" icon="📚" active={activePage === "kennisbank"} onClick={() => setActivePage("kennisbank")} />
+          <SidebarButton label="Bestellingen" icon="🛒" active={activePage === "orders"} onClick={() => setActivePage("orders")} />
+          <SidebarButton label="Overzicht" icon="📊" active={activePage === "analytics"} onClick={() => setActivePage("analytics")} />
         </nav>
         <button
           className="mt-auto mb-6 mx-6 py-2 bg-white text-green-700 rounded font-semibold hover:bg-green-100"
@@ -204,6 +320,144 @@ export default function AdminPanel() {
                 </form>
               </Modal>
             )}
+          </section>
+        )}
+
+        {/* Agenda (calendar + list) */}
+        {activePage === "week" && (
+          <section>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">Agenda</h2>
+            </div>
+            <div className="bg-white rounded-2xl shadow p-8 mb-6">
+              <div className="grid grid-cols-7 gap-2 mb-4">
+                {[...Array(28)].map((_, idx) => {
+                  const dateStr = dayjs().date(idx + 1).format("YYYY-MM-DD");
+                  const items = getAgendaOnDate(dateStr);
+                  return (
+                    <div
+                      key={idx}
+                      className="h-16 flex flex-col items-center justify-center border border-gray-200 rounded hover:bg-green-50 cursor-pointer group"
+                      onClick={() => openAddAgenda(dateStr)}
+                    >
+                      <span className="font-bold">{idx + 1}</span>
+                      {items.map((a, i) => (
+                        <span key={i} className="text-xs mt-1 px-2 py-1 rounded bg-green-200 text-green-900">{a.title}</span>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="text-sm text-gray-400">Klik op een datum om een agenda-item toe te voegen of te wijzigen.</div>
+            </div>
+            <div className="space-y-4">
+              {agenda.sort((a, b) => a.date.localeCompare(b.date)).map(item => (
+                <div key={item.id} className="bg-white rounded-xl p-4 shadow flex justify-between items-center border border-gray-100">
+                  <div>
+                    <div className="font-semibold">{item.title}</div>
+                    <div className="text-xs text-gray-500">{item.date}</div>
+                  </div>
+                  <button className="text-red-600 border px-2 py-1 rounded hover:bg-red-50" onClick={() => handleDeleteAgenda(item.id)}>Verwijder</button>
+                </div>
+              ))}
+            </div>
+            {showAgendaModal && (
+              <Modal onClose={() => setShowAgendaModal(false)}>
+                <form onSubmit={handleAddAgenda} className="space-y-3">
+                  <h2 className="text-lg font-bold mb-2">Nieuw Agenda-item</h2>
+                  <input className="w-full p-2 border rounded" required placeholder="Titel" value={agendaForm.title} onChange={e => setAgendaForm(f => ({ ...f, title: e.target.value }))} />
+                  <input className="w-full p-2 border rounded" type="date" value={agendaForm.date} onChange={e => setAgendaForm(f => ({ ...f, date: e.target.value }))} />
+                  <button className="w-full py-2 bg-green-700 text-white rounded font-semibold">Toevoegen</button>
+                </form>
+              </Modal>
+            )}
+          </section>
+        )}
+
+        {/* Kennisbank */}
+        {activePage === "kennisbank" && (
+          <section>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">Kennisbank</h2>
+              <button className="bg-green-700 text-white px-4 py-2 rounded-xl shadow hover:bg-green-800 font-semibold"
+                onClick={openAddKennis}
+              >
+                + Nieuw Artikel
+              </button>
+            </div>
+            <div className="flex gap-3 mb-4">
+              {kennisbankCategories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedKennisbankCat(cat)}
+                  className={`px-4 py-2 rounded-full ${selectedKennisbankCat === cat ? "bg-green-600 text-white" : "bg-gray-200 text-gray-700"}`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+            <div>
+              {kennisbank.filter(k => k.category === selectedKennisbankCat).map(tab => (
+                <div key={tab.id} className="bg-white border border-gray-200 p-6 rounded mb-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="font-bold text-lg">{tab.title}</div>
+                      <div className="text-gray-500 text-sm mb-2">Categorie: {tab.category}</div>
+                      <div className="mb-3 whitespace-pre-line">{tab.content}</div>
+                    </div>
+                    <div>
+                      <button className="text-red-600 border px-3 py-1 rounded hover:bg-red-50" onClick={() => handleDeleteKennis(tab.id)}>Verwijder</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {addKennisModal && (
+              <Modal onClose={() => setAddKennisModal(false)}>
+                <form onSubmit={handleAddKennis} className="space-y-3">
+                  <h2 className="text-lg font-bold mb-2">Nieuw Artikel</h2>
+                  <input className="w-full p-2 border rounded" required placeholder="Titel" value={kennisForm.title} onChange={e => setKennisForm(f => ({ ...f, title: e.target.value }))} />
+                  <textarea className="w-full p-2 border rounded" required placeholder="Inhoud" value={kennisForm.content} onChange={e => setKennisForm(f => ({ ...f, content: e.target.value }))} />
+                  <select className="w-full p-2 border rounded" value={kennisForm.category} onChange={e => setKennisForm(f => ({ ...f, category: e.target.value }))}>
+                    {kennisbankCategories.map(c => <option value={c} key={c}>{c}</option>)}
+                  </select>
+                  <button className="w-full py-2 bg-green-700 text-white rounded font-semibold">Toevoegen</button>
+                </form>
+              </Modal>
+            )}
+          </section>
+        )}
+
+        {/* Bestellingen */}
+        {activePage === "orders" && (
+          <section>
+            <h2 className="text-2xl font-bold mb-6">Aangevraagde Bestellingen</h2>
+            {orders.length === 0 && <p className="text-gray-500 italic">Geen bestellingen gevonden.</p>}
+            {orders.map(order => (
+              <div key={order.id} className="bg-white border border-gray-200 p-6 rounded mb-3 flex justify-between items-center">
+                <div>
+                  <div className="font-semibold">{order.type?.toUpperCase?.() ?? 'Onbekend'}</div>
+                  <div>{order.text}</div>
+                  <div className="text-xs text-gray-500 italic">Voor: {order.target}</div>
+                </div>
+                <button
+                  onClick={() => handleArchiveOrder(order.id, order.archived)}
+                  className={`text-sm px-3 py-1 rounded border ${order.archived ? 'border-green-400 text-green-600' : 'border-gray-300 text-black hover:border-green-600'}`}
+                >
+                  {order.archived ? 'Gearchiveerd' : 'Archiveer'}
+                </button>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {/* Analytics */}
+        {activePage === "analytics" && (
+          <section>
+            <h2 className="text-2xl font-bold mb-6">Overzicht & Analytics</h2>
+            <div className="bg-white rounded-2xl p-10 shadow text-gray-400">
+              Later toe te voegen: statistieken, exports, enz.
+            </div>
           </section>
         )}
       </main>
