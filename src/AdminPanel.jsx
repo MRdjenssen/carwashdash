@@ -45,183 +45,6 @@ export default function AdminPanel() {
   if (checking) return <div className="p-10">Bezig met inloggen...</div>;
   if (!user) return <div className="p-10 text-red-600">Niet ingelogd. Log eerst in als admin.</div>;
 
-  /* --- Start of Block to be incrementally uncommented ---
-
-  // --- NAVIGATION ---
-  // const [activePage, setActivePage] = useState("day");
-
-  // --- TASKS ---
-  // const [tasks, setTasks] = useState([]);
-  // const [selectedPeriod, setSelectedPeriod] = useState("daily");
-  // const [addTaskModal, setAddTaskModal] = useState(false);
-  // const [taskSubmitting, setTaskSubmitting] = useState(false);
-  // const [taskForm, setTaskForm] = useState({
-  //   text: "",
-  //   notes: "",
-  //   date: dayjs().format("YYYY-MM-DD"),
-  //   timeBlock: "ochtend",
-  //   repeat: "daily"
-  // });
-
-  // --- AGENDA ---
-  // const [agenda, setAgenda] = useState([]);
-  // const [agendaForm, setAgendaForm] = useState({
-  //   title: "",
-  //   date: dayjs().format("YYYY-MM-DD")
-  // });
-  // const [showAgendaModal, setShowAgendaModal] = useState(false);
-
-  // --- KENNISBANK ---
-  // const [kennisbank, setKennisbank] = useState([]);
-  // const [kennisbankCategories, setKennisbankCategories] = useState(kennisbankCategoriesDefault);
-  // const [selectedKennisbankCat, setSelectedKennisbankCat] = useState(kennisbankCategoriesDefault[0]);
-  // const [addKennisModal, setAddKennisModal] = useState(false);
-  // const [kennisForm, setKennisForm] = useState({
-  //   title: "",
-  //   content: "",
-  //   category: kennisbankCategoriesDefault[0],
-  //   // imageUrl: ""  // REMOVE imageUrl for now
-  // });
-
-  // --- ORDERS ---
-  // const [orders, setOrders] = useState([]);
-
-  // --- LOAD DATA ---
-  // useEffect(() => {
-  //   const unsub = onSnapshot(collection(db, "tasks"), (snap) => {
-  //     setTasks(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-  //   });
-  //   return unsub;
-  // }, []);
-
-  // useEffect(() => {
-  //   const unsub = onSnapshot(collection(db, "weeklyAgenda"), (snap) => {
-  //     setAgenda(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-  //   });
-  //   return unsub;
-  // }, []);
-
-  // useEffect(() => {
-  //   const unsub = onSnapshot(collection(db, "kennisbank"), (snap) => {
-  //     setKennisbank(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-  //     // Also auto-fill categories
-  //     const cats = new Set(kennisbankCategoriesDefault);
-  //     snap.docs.forEach(d => d.data().category && cats.add(d.data().category));
-  //     setKennisbankCategories(Array.from(cats));
-  //   });
-  //   return unsub;
-  // }, []);
-
-  // useEffect(() => {
-  //   const unsub = onSnapshot(collection(db, "orders"), (snap) => {
-  //     setOrders(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-  //   });
-  //   return unsub;
-  // }, []);
-
-  // --- GROUP TASKS ---
-  // const groupedTasks = {};
-  // for (let tab of periodTabs) {
-  //   groupedTasks[tab.id] = { ochtend: [], middag: [], avond: [] };
-  // }
-  // tasks.forEach(task => {
-  //   if (groupedTasks[task.repeat]) {
-  //     const block = task.timeBlock || "ochtend";
-  //     groupedTasks[task.repeat][block].push(task);
-  //   }
-  // });
-
-  // --- TASK HANDLERS ---
-  // const openAddTask = () => {
-  //   setTaskForm({
-  //     text: "",
-  //     notes: "",
-  //     date: dayjs().format("YYYY-MM-DD"),
-  //     timeBlock: "ochtend",
-  //     repeat: selectedPeriod
-  //   });
-  //   setAddTaskModal(true);
-  // };
-
-  // const handleAddTask = async (e) => {
-  //   e.preventDefault();
-  //   if (!taskForm.text) return;
-  //   setTaskSubmitting(true);
-  //   try {
-  //     await addDoc(collection(db, "tasks"), {
-  //       ...taskForm,
-  //       done: false,
-  //     });
-  //     setAddTaskModal(false);
-  //   } catch (err) {
-  //     alert("Fout bij opslaan: " + err.message);
-  //   }
-  //   setTaskSubmitting(false);
-  // };
-
-  // const handleDeleteTask = async (id) => {
-  //   await deleteDoc(doc(db, "tasks", id));
-  // };
-
-  // --- AGENDA HANDLERS ---
-  // const openAddAgenda = (date) => {
-  //   setAgendaForm({
-  //     title: "",
-  //     date: date || dayjs().format("YYYY-MM-DD")
-  //   });
-  //   setShowAgendaModal(true);
-  // };
-
-  // const handleAddAgenda = async (e) => {
-  //   e.preventDefault();
-  //   if (!agendaForm.title) return;
-  //   await addDoc(collection(db, "weeklyAgenda"), {
-  //     ...agendaForm
-  //   });
-  //   setShowAgendaModal(false);
-  // };
-
-  // const handleDeleteAgenda = async (id) => {
-  //   await deleteDoc(doc(db, "weeklyAgenda", id));
-  // };
-
-  // function getAgendaOnDate(dateStr) {
-  //   return agenda.filter(a => a.date === dateStr);
-  // }
-
-  // --- KENNISBANK HANDLERS ---
-  // const openAddKennis = () => {
-  //   setKennisForm({
-  //     title: "",
-  //     content: "",
-  //     category: kennisbankCategories[0] || "Algemeen",
-  //     // imageUrl: ""
-  //   });
-  //   setAddKennisModal(true);
-  // };
-
-  // REMOVED uploadImage and knowledge image logic
-
-  // const handleAddKennis = async (e) => {
-  //   e.preventDefault();
-  //   await addDoc(collection(db, "kennisbank"), {
-  //     ...kennisForm,
-  //     // imageUrl: "",  // Don't include imageUrl for now
-  //   });
-  //   setAddKennisModal(false);
-  // };
-
-  // const handleDeleteKennis = async (id) => {
-  //   await deleteDoc(doc(db, "kennisbank", id));
-  // };
-
-  // --- ORDERS ---
-  // const handleArchiveOrder = async (id, archived) => {
-  //   await updateDoc(doc(db, "orders", id), { archived: !archived });
-  // };
-
-  --- End of Block to be incrementally uncommented --- */
-
   // Temporary return for testing:
   return (
     <div className="p-10">
@@ -237,8 +60,187 @@ export default function AdminPanel() {
     </div>
   );
 
-  // Original full JSX (currently unreachable due to the temporary return above)
   /*
+  The following is the original code of the component,
+  commented out for incremental reintroduction.
+  We will uncomment sections from here bit by bit.
+  */
+
+  /*
+  // --- NAVIGATION ---
+  const [activePage, setActivePage] = useState("day");
+
+  // --- TASKS ---
+  const [tasks, setTasks] = useState([]);
+  const [selectedPeriod, setSelectedPeriod] = useState("daily");
+  const [addTaskModal, setAddTaskModal] = useState(false);
+  const [taskSubmitting, setTaskSubmitting] = useState(false);
+  const [taskForm, setTaskForm] = useState({
+    text: "",
+    notes: "",
+    date: dayjs().format("YYYY-MM-DD"),
+    timeBlock: "ochtend",
+    repeat: "daily"
+  });
+
+  // --- AGENDA ---
+  const [agenda, setAgenda] = useState([]);
+  const [agendaForm, setAgendaForm] = useState({
+    title: "",
+    date: dayjs().format("YYYY-MM-DD")
+  });
+  const [showAgendaModal, setShowAgendaModal] = useState(false);
+
+  // --- KENNISBANK ---
+  const [kennisbank, setKennisbank] = useState([]);
+  const [kennisbankCategories, setKennisbankCategories] = useState(kennisbankCategoriesDefault);
+  const [selectedKennisbankCat, setSelectedKennisbankCat] = useState(kennisbankCategoriesDefault[0]);
+  const [addKennisModal, setAddKennisModal] = useState(false);
+  const [kennisForm, setKennisForm] = useState({
+    title: "",
+    content: "",
+    category: kennisbankCategoriesDefault[0],
+    // imageUrl: ""  // REMOVE imageUrl for now
+  });
+
+  // --- ORDERS ---
+  const [orders, setOrders] = useState([]);
+
+  // --- LOAD DATA ---
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "tasks"), (snap) => {
+      setTasks(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "weeklyAgenda"), (snap) => {
+      setAgenda(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "kennisbank"), (snap) => {
+      setKennisbank(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      // Also auto-fill categories
+      const cats = new Set(kennisbankCategoriesDefault);
+      snap.docs.forEach(d => d.data().category && cats.add(d.data().category));
+      setKennisbankCategories(Array.from(cats));
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "orders"), (snap) => {
+      setOrders(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    return unsub;
+  }, []);
+
+  // --- GROUP TASKS ---
+  const groupedTasks = {};
+  for (let tab of periodTabs) {
+    groupedTasks[tab.id] = { ochtend: [], middag: [], avond: [] };
+  }
+  tasks.forEach(task => {
+    if (groupedTasks[task.repeat]) {
+      const block = task.timeBlock || "ochtend";
+      groupedTasks[task.repeat][block].push(task);
+    }
+  });
+
+  // --- TASK HANDLERS ---
+  const openAddTask = () => {
+    setTaskForm({
+      text: "",
+      notes: "",
+      date: dayjs().format("YYYY-MM-DD"),
+      timeBlock: "ochtend",
+      repeat: selectedPeriod
+    });
+    setAddTaskModal(true);
+  };
+
+  const handleAddTask = async (e) => {
+    e.preventDefault();
+    if (!taskForm.text) return;
+    setTaskSubmitting(true);
+    try {
+      await addDoc(collection(db, "tasks"), {
+        ...taskForm,
+        done: false,
+      });
+      setAddTaskModal(false);
+    } catch (err) {
+      alert("Fout bij opslaan: " + err.message);
+    }
+    setTaskSubmitting(false);
+  };
+
+  const handleDeleteTask = async (id) => {
+    await deleteDoc(doc(db, "tasks", id));
+  };
+
+  // --- AGENDA HANDLERS ---
+  const openAddAgenda = (date) => {
+    setAgendaForm({
+      title: "",
+      date: date || dayjs().format("YYYY-MM-DD")
+    });
+    setShowAgendaModal(true);
+  };
+
+  const handleAddAgenda = async (e) => {
+    e.preventDefault();
+    if (!agendaForm.title) return;
+    await addDoc(collection(db, "weeklyAgenda"), {
+      ...agendaForm
+    });
+    setShowAgendaModal(false);
+  };
+
+  const handleDeleteAgenda = async (id) => {
+    await deleteDoc(doc(db, "weeklyAgenda", id));
+  };
+
+  function getAgendaOnDate(dateStr) {
+    return agenda.filter(a => a.date === dateStr);
+  }
+
+  // --- KENNISBANK HANDLERS ---
+  const openAddKennis = () => {
+    setKennisForm({
+      title: "",
+      content: "",
+      category: kennisbankCategories[0] || "Algemeen",
+      // imageUrl: ""
+    });
+    setAddKennisModal(true);
+  };
+
+  // REMOVED uploadImage and knowledge image logic
+
+  const handleAddKennis = async (e) => {
+    e.preventDefault();
+    await addDoc(collection(db, "kennisbank"), {
+      ...kennisForm,
+      // imageUrl: "",  // Don't include imageUrl for now
+    });
+    setAddKennisModal(false);
+  };
+
+  const handleDeleteKennis = async (id) => {
+    await deleteDoc(doc(db, "kennisbank", id));
+  };
+
+  // --- ORDERS ---
+  const handleArchiveOrder = async (id, archived) => {
+    await updateDoc(doc(db, "orders", id), { archived: !archived });
+  };
+
+  // ---- UI ----
   return (
     <div className="min-h-screen flex bg-gray-50">
       {/* Sidebar */}
@@ -405,7 +407,7 @@ export default function AdminPanel() {
                 + Nieuw Artikel
               </button>
             </div>
-            <div className="flex gap-3 mb-4">
+            <div className_="flex gap-3 mb-4">
               {kennisbankCategories.map(cat => (
                 <button
                   key={cat}
