@@ -7,7 +7,16 @@ import AdminPanel from './AdminPanel.jsx';
 
 function App() {
   const isAdmin = window.location.pathname === '/admin';
-  return isAdmin ? <AdminPanel /> : <TabletView />;
+  return (
+    <>
+      <div style={{ display: isAdmin ? 'block' : 'none' }}>
+        <AdminPanel />
+      </div>
+      <div style={{ display: !isAdmin ? 'block' : 'none' }}>
+        <TabletView />
+      </div>
+    </>
+  );
 }
 
 createRoot(document.getElementById('root')).render(
