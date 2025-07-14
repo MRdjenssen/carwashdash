@@ -15,6 +15,7 @@ import {
 } from "firebase/auth";
 import app from "./firebaseConfig";
 import dayjs from "dayjs";
+import AdminLogin from './AdminLogin'; // <-- IMPORT AdminLogin
 
 const db = getFirestore(app);
 const auth = getAuth(app);
@@ -224,11 +225,15 @@ export default function AdminPanel() {
     return <div className="p-10">Bezig met inloggen...</div>;
   }
 
+  // ** THIS IS THE KEY CHANGE **
+  // If not logged in, show the AdminLogin component.
   if (!user) {
-    return <div className="p-10 text-red-600">Niet ingelogd. Log eerst in als admin.</div>;
+    // The onLogin prop is not strictly necessary anymore since we use
+    // onAuthStateChanged to detect the login, but it can be kept for clarity.
+    return <AdminLogin onLogin={() => {}} />;
   }
 
-  // **THIS IS THE CHANGE**: We are now using the original, full JSX return statement.
+  // If user is logged in, show the full Admin Panel UI.
   return (
     <div className="min-h-screen flex bg-gray-50">
       <aside className="w-64 bg-green-700 text-white flex flex-col">
