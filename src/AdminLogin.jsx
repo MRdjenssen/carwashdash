@@ -26,7 +26,7 @@ export default function AdminLogin({ onLogin }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <form className="bg-white p-8 rounded-xl shadow-md w-full max-w-sm" onSubmit={handleSubmit}>
-        <h2 className="text-2xl font-bold mb-6 text-center">Admin Login</h2>
+        <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
         <input
           type="email"
           className="w-full mb-3 p-2 border rounded"
