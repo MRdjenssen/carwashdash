@@ -16,7 +16,7 @@ import {
 import app from "./firebaseConfig";
 import dayjs from "dayjs";
 import AdminLogin from './AdminLogin'; // <-- IMPORT AdminLogin
-import CompletedTasks from './CompletedTasks';
+import CompletedTasks from './CompletedTasks.jsx';
 
 const db = getFirestore(app);
 const auth = getAuth(app);
