@@ -33,7 +33,9 @@ export default function TabletView() {
   useEffect(() => {
     // Alles ophalen, filtering gebeurt clientside ivm herhalingen
     const unsubTasks = onSnapshot(collection(db, 'tasks'), (snapshot) => {
-      setAllTasks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setAllTasks(tasks);
+      rolloverTasks(tasks);
     });
     const unsubNotes = onSnapshot(collection(db, 'kennisbank'), (snapshot) => {
       setNotes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -47,6 +49,21 @@ export default function TabletView() {
       unsubAgenda();
     };
   }, []);
+
+  const rolloverTasks = async (tasks) => {
+    const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
+    const today = dayjs().format('YYYY-MM-DD');
+
+    for (const task of tasks) {
+      if (task.rollover && !task.done && task.date === yesterday) {
+        await addDoc(collection(db, 'tasks'), {
+          ...task,
+          date: today,
+          text: `! ${task.text}`,
+        });
+      }
+    }
+  };
 
   useEffect(() => {
     const updateClock = () => {
