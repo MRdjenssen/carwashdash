@@ -16,6 +16,7 @@ import {
 import app from "./firebaseConfig";
 import dayjs from "dayjs";
 import AdminLogin from './AdminLogin'; // <-- IMPORT AdminLogin
+import CompletedTasks from './CompletedTasks';
 
 const db = getFirestore(app);
 const auth = getAuth(app);
@@ -56,7 +57,8 @@ export default function AdminPanel() {
     notes: "",
     date: dayjs().format("YYYY-MM-DD"),
     timeBlock: "ochtend",
-    repeat: "daily"
+    repeat: "daily",
+    rollover: false
   });
 
   // --- AGENDA ---
@@ -138,7 +140,8 @@ export default function AdminPanel() {
       notes: "",
       date: dayjs().format("YYYY-MM-DD"),
       timeBlock: "ochtend",
-      repeat: selectedPeriod
+      repeat: selectedPeriod,
+      rollover: false
     });
     setAddTaskModal(true);
   };
@@ -251,6 +254,7 @@ export default function AdminPanel() {
           <SidebarButton label="Kennisbank" icon="📚" active={activePage === "kennisbank"} onClick={() => setActivePage("kennisbank")} />
           <SidebarButton label="Bestellingen" icon="🛒" active={activePage === "orders"} onClick={() => setActivePage("orders")} />
           <SidebarButton label="Overzicht" icon="📊" active={activePage === "analytics"} onClick={() => setActivePage("analytics")} />
+          <SidebarButton label="Completed Tasks" icon="✅" active={activePage === "completed"} onClick={() => setActivePage("completed")} />
         </nav>
         <button
           className="mt-auto mb-6 mx-6 py-2 bg-white text-green-700 rounded font-semibold hover:bg-green-100"
@@ -320,6 +324,16 @@ export default function AdminPanel() {
                   <select className="w-full p-2 border rounded" value={taskForm.repeat} onChange={e => setTaskForm(f => ({ ...f, repeat: e.target.value }))}>
                     {periodTabs.map(t => <option value={t.id} key={t.id}>{t.label}</option>)}
                   </select>
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="rollover"
+                      checked={taskForm.rollover}
+                      onChange={e => setTaskForm(f => ({ ...f, rollover: e.target.checked }))}
+                      className="mr-2"
+                    />
+                    <label htmlFor="rollover">Rollover to next day if not completed</label>
+                  </div>
                   <button
                     type="submit"
                     className="w-full py-2 bg-green-700 text-white rounded font-semibold"
@@ -464,6 +478,12 @@ export default function AdminPanel() {
             <div className="bg-white rounded-2xl p-10 shadow text-gray-400">
               Later toe te voegen: statistieken, exports, enz.
             </div>
+          </section>
+        )}
+
+        {activePage === "completed" && (
+          <section>
+            <CompletedTasks />
           </section>
         )}
       </main>

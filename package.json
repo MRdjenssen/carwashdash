@@ -1,4 +1,5 @@
 {
+{
   "name": "carwashdash",
   "private": true,
   "version": "0.0.0",
@@ -13,6 +14,7 @@
     "dayjs": "^1.11.13",
     "firebase": "^11.6.1",
     "react": "^19.1.0",
+    "react-calendar": "^6.0.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
