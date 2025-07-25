@@ -17,6 +17,8 @@ import app from "./firebaseConfig";
 import dayjs from "dayjs";
 import AdminLogin from './AdminLogin'; // <-- IMPORT AdminLogin
 import CompletedTasks from './CompletedTasks.jsx';
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
 
 const db = getFirestore(app);
 const auth = getAuth(app);
@@ -28,7 +30,6 @@ const periodTabs = [
   { id: "monthly", label: "Maandelijks" },
   { id: "yearly", label: "Jaarlijks" },
 ];
-const dayBlocks = ["ochtend", "middag", "avond"];
 const kennisbankCategoriesDefault = ["Algemeen", "Materiaal", "Personeel"];
 
 export default function AdminPanel() {
@@ -46,6 +47,10 @@ export default function AdminPanel() {
 
   // --- NAVIGATION ---
   const [activePage, setActivePage] = useState("day");
+  const [view, setView] = useState("list"); // "list" or "calendar"
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [sortBy, setSortBy] = useState("timeBlock"); // "timeBlock" or "day"
+  const dayBlocks = sortBy === "day" ? ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] : ["ochtend", "middag", "avond"];
 
   // --- TASKS ---
   const [tasks, setTasks] = useState([]);
@@ -58,7 +63,8 @@ export default function AdminPanel() {
     date: dayjs().format("YYYY-MM-DD"),
     timeBlock: "ochtend",
     repeat: "daily",
-    rollover: false
+    rollover: false,
+    day: "monday"
   });
 
   // --- AGENDA ---
@@ -121,16 +127,30 @@ export default function AdminPanel() {
 
   // --- GROUP TASKS ---
   const groupedTasks = {};
-  for (let tab of periodTabs) {
-    groupedTasks[tab.id] = { ochtend: [], middag: [], avond: [] };
-  }
-  if (user) {
-    tasks.forEach(task => {
-      if (groupedTasks[task.repeat]) {
-        const block = task.timeBlock || "ochtend";
-        groupedTasks[task.repeat][block].push(task);
-      }
-    });
+  if (sortBy === "timeBlock") {
+    for (let tab of periodTabs) {
+      groupedTasks[tab.id] = { ochtend: [], middag: [], avond: [] };
+    }
+    if (user) {
+      tasks.forEach(task => {
+        if (groupedTasks[task.repeat]) {
+          const block = task.timeBlock || "ochtend";
+          groupedTasks[task.repeat][block].push(task);
+        }
+      });
+    }
+  } else {
+    for (let tab of periodTabs) {
+      groupedTasks[tab.id] = { monday: [], tuesday: [], wednesday: [], thursday: [], friday: [], saturday: [], sunday: [] };
+    }
+    if (user) {
+      tasks.forEach(task => {
+        if (groupedTasks[task.repeat]) {
+          const day = task.day || "monday";
+          groupedTasks[task.repeat][day].push(task);
+        }
+      });
+    }
   }
 
   // --- TASK HANDLERS ---
@@ -286,30 +306,64 @@ export default function AdminPanel() {
                 </button>
               ))}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {dayBlocks.map(block => (
-                <div key={block} className="bg-white shadow rounded-2xl p-5">
-                  <h3 className="font-bold mb-3 capitalize">{block}</h3>
-                  <div className="flex flex-col gap-3">
-                    {groupedTasks[selectedPeriod][block].length === 0 && (
-                      <div className="text-gray-400 text-sm">Geen taken.</div>
-                    )}
-                    {groupedTasks[selectedPeriod][block].map(task => (
-                      <div key={task.id} className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex justify-between items-center">
-                        <div>
-                          <div className="font-medium">{task.text}</div>
-                          <div className="text-xs text-gray-400">{task.notes}</div>
-                          <div className="text-xs text-gray-500">{periodTabs.find(pt => pt.id === task.repeat)?.label}</div>
-                        </div>
-                        <div className="flex gap-2">
-                          <button className="text-red-600 border px-2 py-1 rounded hover:bg-red-50" onClick={() => handleDeleteTask(task.id)}>Verwijder</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
+
+            <div className="flex gap-2 mb-6">
+              <button onClick={() => setView("list")} className={`px-4 py-2 rounded-xl font-semibold ${view === "list" ? "bg-green-600 text-white" : "bg-gray-200 text-gray-700"}`}>List</button>
+              <button onClick={() => setView("calendar")} className={`px-4 py-2 rounded-xl font-semibold ${view === "calendar" ? "bg-green-600 text-white" : "bg-gray-200 text-gray-700"}`}>Calendar</button>
+              <select onChange={(e) => setSortBy(e.target.value)} value={sortBy} className="px-4 py-2 rounded-xl font-semibold bg-gray-200 text-gray-700">
+                <option value="timeBlock">Sort by Time Block</option>
+                <option value="day">Sort by Day</option>
+              </select>
             </div>
+
+            {view === "list" && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {dayBlocks.map(block => (
+                  <div key={block} className="bg-white shadow rounded-2xl p-5">
+                    <h3 className="font-bold mb-3 capitalize">{block}</h3>
+                    <div className="flex flex-col gap-3">
+                      {(groupedTasks[selectedPeriod][block] || []).length === 0 && (
+                        <div className="text-gray-400 text-sm">Geen taken.</div>
+                      )}
+                      {(groupedTasks[selectedPeriod][block] || []).map(task => (
+                        <div key={task.id} className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex justify-between items-center">
+                          <div>
+                            <div className="font-medium">{task.text}</div>
+                            <div className="text-xs text-gray-400">{task.notes}</div>
+                            <div className="text-xs text-gray-500">{periodTabs.find(pt => pt.id === task.repeat)?.label}</div>
+                            <div className="text-xs text-gray-500">{task.day}</div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button className="text-red-600 border px-2 py-1 rounded hover:bg-red-50" onClick={() => handleDeleteTask(task.id)}>Verwijder</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {view === "calendar" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Calendar
+                    onChange={setSelectedDate}
+                    value={selectedDate}
+                  />
+                </div>
+                <div className="space-y-4">
+                  {tasks.filter(task => dayjs(task.date).isSame(selectedDate, 'day')).map(task => (
+                    <div key={task.id} className="bg-white rounded-xl p-4 shadow flex justify-between items-center border border-gray-100">
+                      <div>
+                        <div className="font-semibold">{task.text}</div>
+                        <div className="text-xs text-gray-500">{dayjs(task.date).format('YYYY-MM-DD')}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {addTaskModal && (
               <Modal onClose={() => setAddTaskModal(false)}>
@@ -319,7 +373,10 @@ export default function AdminPanel() {
                   <input className="w-full p-2 border rounded" placeholder="Instructies/notities" value={taskForm.notes} onChange={e => setTaskForm(f => ({ ...f, notes: e.target.value }))} />
                   <input className="w-full p-2 border rounded" type="date" value={taskForm.date} onChange={e => setTaskForm(f => ({ ...f, date: e.target.value }))} />
                   <select className="w-full p-2 border rounded" value={taskForm.timeBlock} onChange={e => setTaskForm(f => ({ ...f, timeBlock: e.target.value }))}>
-                    {dayBlocks.map(b => <option value={b} key={b}>{b.charAt(0).toUpperCase() + b.slice(1)}</option>)}
+                    {["ochtend", "middag", "avond"].map(b => <option value={b} key={b}>{b.charAt(0).toUpperCase() + b.slice(1)}</option>)}
+                  </select>
+                  <select className="w-full p-2 border rounded" value={taskForm.day} onChange={e => setTaskForm(f => ({ ...f, day: e.target.value }))}>
+                    {["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map(d => <option value={d} key={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
                   </select>
                   <select className="w-full p-2 border rounded" value={taskForm.repeat} onChange={e => setTaskForm(f => ({ ...f, repeat: e.target.value }))}>
                     {periodTabs.map(t => <option value={t.id} key={t.id}>{t.label}</option>)}
