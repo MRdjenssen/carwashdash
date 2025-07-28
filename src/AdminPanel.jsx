@@ -171,6 +171,7 @@ export default function AdminPanel() {
     setTaskSubmitting(true);
     try {
       const day = dayjs(taskForm.date).format("dddd").toLowerCase();
+      console.log("Adding task:", { ...taskForm, day });
       await addDoc(collection(db, "tasks"), {
         ...taskForm,
         day,
@@ -297,6 +298,16 @@ export default function AdminPanel() {
           <section>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold">Dag Taken</h2>
+              <button className="bg-red-600 text-white px-4 py-2 rounded-xl shadow hover:bg-red-700 font-semibold"
+                onClick={() => {
+                  if (window.confirm("Are you sure you want to delete all tasks in this view?")) {
+                    const tasksToDelete = tasks.filter(task => task.repeat === selectedPeriod && task.timeBlock === sortBy);
+                    tasksToDelete.forEach(task => handleDeleteTask(task.id));
+                  }
+                }}
+              >
+                Delete All
+              </button>
             </div>
             <div className="flex gap-2 mb-6">
               {periodTabs.map(tab => (
