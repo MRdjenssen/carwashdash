@@ -160,7 +160,7 @@ export default function AdminPanel() {
       date: dayjs().format("YYYY-MM-DD"),
       timeBlock: "ochtend",
       repeat: selectedPeriod,
-      rollover: false
+      rollover: false,
     });
     setAddTaskModal(true);
   };
@@ -358,16 +358,19 @@ export default function AdminPanel() {
                   tileContent={({ date, view }) => {
                     if (view === 'month') {
                       const tasksOnDate = tasks.filter(task => dayjs(task.date).isSame(date, 'day'));
-                      return (
-                        <div className="flex flex-col">
-                          {tasksOnDate.map(task => (
-                            <div key={task.id} className="text-xs bg-green-200 rounded-sm px-1 mt-1">
-                              {task.text}
-                            </div>
-                          ))}
-                        </div>
-                      );
+                      if (tasksOnDate.length > 0) {
+                        return (
+                          <div className="flex flex-col">
+                            {tasksOnDate.map(task => (
+                              <div key={task.id} className="text-xs bg-green-200 rounded-sm px-1 mt-1">
+                                {task.text}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      }
                     }
+                    return null;
                   }}
                 />
               </div>
