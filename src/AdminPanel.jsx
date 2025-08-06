@@ -118,7 +118,8 @@ export default function AdminPanel() {
 
   useEffect(() => {
     if (!user) return;
-    const unsub = onSnapshot(collection(db, "orders"), (snap) => {
+    const q = query(collection(db, "orders"), where("archived", "==", false));
+    const unsub = onSnapshot(q, (snap) => {
       setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
     return unsub;

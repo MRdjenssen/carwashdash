@@ -31,12 +31,65 @@ export default function TabletView() {
 
   // Laad dagtaken & herhalingen
   useEffect(() => {
-    // Alles ophalen, filtering gebeurt clientside ivm herhalingen
-    const unsubTasks = onSnapshot(collection(db, 'tasks'), (snapshot) => {
-      const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setAllTasks(tasks);
-      rolloverTasks(tasks);
-    });
+    const todayStr = dayjs().format('YYYY-MM-DD');
+
+    const dailyQuery = query(
+      collection(db, 'tasks'),
+      where('done', '==', false),
+      where('repeat', '==', 'daily')
+    );
+
+    const weeklyQuery = query(
+      collection(db, 'tasks'),
+      where('done', '==', false),
+      where('repeat', '==', 'weekly'),
+      where('day', '==', dayjs().format('dddd').toLowerCase())
+    );
+
+    const monthlyQuery = query(
+      collection(db, 'tasks'),
+      where('done', '==', false),
+      where('repeat', '==', 'monthly'),
+      where('date', '==', dayjs().format('YYYY-MM-DD'))
+    );
+
+    const yearlyQuery = query(
+      collection(db, 'tasks'),
+      where('done', '==', false),
+      where('repeat', '==', 'yearly'),
+      where('date', '==', dayjs().format('YYYY-MM-DD'))
+    );
+
+    const todayQuery = query(
+      collection(db, 'tasks'),
+      where('done', '==', false),
+      where('date', '==', todayStr)
+    );
+
+    const unsubscribes = [
+      onSnapshot(dailyQuery, (snapshot) => {
+        const dailyTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setAllTasks(prev => [...prev.filter(t => t.repeat !== 'daily'), ...dailyTasks]);
+      }),
+      onSnapshot(weeklyQuery, (snapshot) => {
+        const weeklyTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setAllTasks(prev => [...prev.filter(t => t.repeat !== 'weekly'), ...weeklyTasks]);
+      }),
+      onSnapshot(monthlyQuery, (snapshot) => {
+        const monthlyTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setAllTasks(prev => [...prev.filter(t => t.repeat !== 'monthly'), ...monthlyTasks]);
+      }),
+      onSnapshot(yearlyQuery, (snapshot) => {
+        const yearlyTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setAllTasks(prev => [...prev.filter(t => t.repeat !== 'yearly'), ...yearlyTasks]);
+      }),
+      onSnapshot(todayQuery, (snapshot) => {
+        const todayTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setAllTasks(prev => [...prev.filter(t => t.date !== todayStr), ...todayTasks]);
+        rolloverTasks(allTasks);
+      })
+    ];
+
     const unsubNotes = onSnapshot(collection(db, 'kennisbank'), (snapshot) => {
       setNotes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
@@ -44,7 +97,7 @@ export default function TabletView() {
       setAgendaItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
     return () => {
-      unsubTasks();
+      unsubscribes.forEach(unsub => unsub());
       unsubNotes();
       unsubAgenda();
     };
@@ -83,24 +136,6 @@ export default function TabletView() {
     return () => clearInterval(interval);
   }, []);
 
-  // Filter voor vandaag & herhalende taken
-  function getTodayTasks() {
-    const result = { ochtend: [], middag: [], avond: [] };
-    allTasks.forEach(task => {
-      const block = task.timeBlock || 'ochtend';
-      // Herhalend: bepaal of deze vandaag ook geldt
-      if (
-        task.date === today ||
-        (task.repeat === 'daily') ||
-        (task.repeat === 'weekly' && dayjs(task.date).day() === dayjs(today).day() && dayjs(task.date).isSameOrBefore(today)) ||
-        (task.repeat === 'monthly' && dayjs(task.date).date() === dayjs(today).date() && dayjs(task.date).isSameOrBefore(today)) ||
-        (task.repeat === 'yearly' && dayjs(task.date).format('MM-DD') === dayjs(today).format('MM-DD') && dayjs(task.date).isSameOrBefore(today))
-      ) {
-        result[block].push(task);
-      }
-    });
-    return result;
-  }
 
   const toggleBlock = (block) => {
     setExpandedBlocks((prev) =>
@@ -139,7 +174,11 @@ export default function TabletView() {
     { id: 'bestellen', label: 'Bestellen', icon: '🛒' },
   ];
 
-  const todayBlocks = getTodayTasks();
+  const todayBlocks = { ochtend: [], middag: [], avond: [] };
+  allTasks.forEach(task => {
+    const block = task.timeBlock || 'ochtend';
+    todayBlocks[block].push(task);
+  });
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 text-gray-800 relative pb-24">
