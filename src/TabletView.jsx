@@ -101,17 +101,6 @@ export default function TabletView() {
       unsubNotes();
       unsubAgenda();
     };
-    const unsubNotes = onSnapshot(collection(db, 'kennisbank'), (snapshot) => {
-      setNotes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-    const unsubAgenda = onSnapshot(collection(db, 'weeklyAgenda'), (snapshot) => {
-      setAgendaItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => {
-      unsubTasks();
-      unsubNotes();
-      unsubAgenda();
-    };
   }, []);
 
   const rolloverTasks = async (tasks) => {
