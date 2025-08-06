@@ -189,7 +189,14 @@ export default function AdminPanel() {
 
   const handleDeleteTask = async (id) => {
     if (!user) return;
-    await deleteDoc(doc(db, "tasks", id));
+    console.log("Deleting task:", id);
+    try {
+      await deleteDoc(doc(db, "tasks", id));
+      console.log("Task deleted:", id);
+    } catch (err) {
+      console.error("Error deleting task:", id, err);
+      alert("Fout bij verwijderen: " + err.message);
+    }
   };
 
   // --- AGENDA HANDLERS ---
@@ -304,7 +311,12 @@ export default function AdminPanel() {
               <button className="bg-red-600 text-white px-4 py-2 rounded-xl shadow hover:bg-red-700 font-semibold"
                 onClick={() => {
                   if (window.confirm("Are you sure you want to delete all tasks in this view?")) {
-                    const tasksToDelete = tasks.filter(task => task.repeat === selectedPeriod && task.timeBlock === sortBy);
+                    let tasksToDelete;
+                    if (sortBy === "timeBlock") {
+                      tasksToDelete = tasks.filter(task => task.repeat === selectedPeriod && dayBlocks.includes(task.timeBlock));
+                    } else {
+                      tasksToDelete = tasks.filter(task => task.repeat === selectedPeriod && dayBlocks.includes(task.day));
+                    }
                     tasksToDelete.forEach(task => handleDeleteTask(task.id));
                   }
                 }}
