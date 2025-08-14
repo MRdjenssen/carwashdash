@@ -8,7 +8,8 @@ import {
   doc,
   onSnapshot,
   query,
-  where
+  where,
+  writeBatch
 } from "firebase/firestore";
 import {
   getAuth,
@@ -201,6 +202,45 @@ export default function AdminPanel() {
     }
   };
 
+  const handleDeleteTaskBatch = async (tasksToDelete) => {
+    if (!user || tasksToDelete.length === 0) return;
+    console.log(`Deleting batch of ${tasksToDelete.length} tasks`);
+    try {
+      const batch = writeBatch(db);
+      tasksToDelete.forEach(task => {
+        const docRef = doc(db, "tasks", task.id);
+        batch.delete(docRef);
+      });
+      await batch.commit();
+      console.log(`Batch of ${tasksToDelete.length} tasks deleted successfully.`);
+    } catch (err) {
+      console.error("Error deleting task batch:", err);
+      alert("Fout bij verwijderen van taken: " + err.message);
+    }
+  };
+
+  const handleDeleteAllTasksInBlock = async (period, block) => {
+    const tasksInBlock = groupedTasks[period]?.[block] || [];
+    if (tasksInBlock.length === 0) {
+      alert("No tasks to delete.");
+      return;
+    }
+
+    if (window.confirm(`Are you sure you want to delete all ${tasksInBlock.length} tasks in the '${block}' block for the selected period?`)) {
+      if (tasksInBlock.length > 500) {
+        console.log("Large deletion, splitting into multiple batches.");
+        const promises = [];
+        for (let i = 0; i < tasksInBlock.length; i += 500) {
+          const chunk = tasksInBlock.slice(i, i + 500);
+          promises.push(handleDeleteTaskBatch(chunk));
+        }
+        await Promise.all(promises);
+      } else {
+        await handleDeleteTaskBatch(tasksInBlock);
+      }
+    }
+  };
+
   // --- AGENDA HANDLERS ---
   const openAddAgenda = (date) => {
     setAgendaForm({
@@ -344,12 +384,7 @@ export default function AdminPanel() {
                       <button
                         className="bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600 disabled:bg-gray-400"
                         disabled={(groupedTasks[selectedPeriod][block] || []).length === 0}
-                        onClick={() => {
-                          if (window.confirm(`Are you sure you want to delete all tasks in the '${block}' block for the selected period?`)) {
-                            const tasksInBlock = groupedTasks[selectedPeriod][block] || [];
-                            tasksInBlock.forEach(task => handleDeleteTask(task.id));
-                          }
-                        }}
+                        onClick={() => handleDeleteAllTasksInBlock(selectedPeriod, block)}
                       >
                         Delete All
                       </button>
