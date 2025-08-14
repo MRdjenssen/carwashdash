@@ -7,7 +7,9 @@ import {
   deleteDoc,
   doc,
   onSnapshot,
-  writeBatch
+  writeBatch,
+  query,
+  where
 } from "firebase/firestore";
 import {
   getAuth,
