@@ -9,7 +9,8 @@ import {
   onSnapshot,
   query,
   where,
-  writeBatch
+  writeBatch,
+  getDocs
 } from "firebase/firestore";
 import {
   getAuth,
@@ -301,6 +302,76 @@ export default function AdminPanel() {
   const handleArchiveOrder = async (id, archived) => {
     if (!user) return;
     await updateDoc(doc(db, "orders", id), { archived: !archived });
+  };
+
+  const handleExport = async () => {
+    if (!user) return;
+    try {
+      const tasksCollection = collection(db, "tasks");
+      const tasksSnapshot = await getDocs(tasksCollection);
+      const tasksList = tasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
+        JSON.stringify(tasksList, null, 2)
+      )}`;
+      const link = document.createElement("a");
+      link.href = jsonString;
+      link.download = "tasks.json";
+      link.click();
+    } catch (err) {
+      console.error("Error exporting tasks:", err);
+      alert("Error exporting tasks: " + err.message);
+    }
+  };
+
+  const handleImport = () => {
+    if (!user) return;
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json';
+
+    input.onchange = e => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const tasksToImport = JSON.parse(event.target.result);
+
+                if (!window.confirm("Are you sure you want to import these tasks? This will overwrite all existing tasks.")) {
+                    return;
+                }
+
+                // Delete all existing tasks
+                const tasksCollection = collection(db, "tasks");
+                const tasksSnapshot = await getDocs(tasksCollection);
+                const deleteBatch = writeBatch(db);
+                tasksSnapshot.docs.forEach(doc => {
+                    deleteBatch.delete(doc.ref);
+                });
+                await deleteBatch.commit();
+
+                // Add new tasks
+                const addBatch = writeBatch(db);
+                tasksToImport.forEach(task => {
+                    const { id: _id, ...taskData } = task; // remove the old id
+                    const newDocRef = doc(collection(db, "tasks"));
+                    addBatch.set(newDocRef, taskData);
+                });
+                await addBatch.commit();
+
+                alert("Tasks imported successfully!");
+
+            } catch (err) {
+                console.error("Error importing tasks:", err);
+                alert("Error importing tasks: " + err.message);
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    input.click();
   };
 
   if (checking) {
@@ -607,8 +678,21 @@ export default function AdminPanel() {
         {activePage === "analytics" && (
           <section>
             <h2 className="text-2xl font-bold mb-6">Overzicht & Analytics</h2>
-            <div className="bg-white rounded-2xl p-10 shadow text-gray-400">
-              Later toe te voegen: statistieken, exports, enz.
+            <div className="bg-white rounded-2xl p-10 shadow">
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  className="bg-blue-500 text-white px-4 py-2 rounded-xl shadow hover:bg-blue-600 font-semibold"
+                  onClick={handleExport}
+                >
+                  Export Tasks
+                </button>
+                <button
+                  className="bg-yellow-500 text-white px-4 py-2 rounded-xl shadow hover:bg-yellow-600 font-semibold"
+                  onClick={handleImport}
+                >
+                  Import Tasks
+                </button>
+              </div>
             </div>
           </section>
         )}

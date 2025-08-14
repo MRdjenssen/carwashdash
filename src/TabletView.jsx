@@ -20,7 +20,7 @@ const db = getFirestore(app);
 
 export default function TabletView() {
   const [view, setView] = useState('vandaag');
-  const [today, setToday] = useState(dayjs().format('YYYY-MM-DD'));
+  const [today] = useState(dayjs().format('YYYY-MM-DD'));
   const [allTasks, setAllTasks] = useState([]);
   const [notes, setNotes] = useState([]);
   const [expandedBlocks, setExpandedBlocks] = useState(['ochtend', 'middag', 'avond']);
@@ -101,6 +101,7 @@ export default function TabletView() {
       unsubNotes();
       unsubAgenda();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const rolloverTasks = async (tasks) => {
