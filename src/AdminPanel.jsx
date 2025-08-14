@@ -6,7 +6,8 @@ import {
   updateDoc,
   deleteDoc,
   doc,
-  onSnapshot
+  onSnapshot,
+  writeBatch
 } from "firebase/firestore";
 import {
   getAuth,
@@ -198,6 +199,22 @@ export default function AdminPanel() {
     }
   };
 
+  const handleDeleteMultipleTasks = async (taskIds) => {
+    if (!user) return;
+    console.log("Deleting multiple tasks:", taskIds);
+    const batch = writeBatch(db);
+    taskIds.forEach(id => {
+      batch.delete(doc(db, "tasks", id));
+    });
+    try {
+      await batch.commit();
+      console.log("Multiple tasks deleted successfully.");
+    } catch (err) {
+      console.error("Error deleting multiple tasks:", err);
+      alert("Fout bij verwijderen van meerdere taken: " + err.message);
+    }
+  };
+
   // --- AGENDA HANDLERS ---
   const openAddAgenda = (date) => {
     setAgendaForm({
@@ -344,7 +361,8 @@ export default function AdminPanel() {
                         onClick={() => {
                           if (window.confirm(`Are you sure you want to delete all tasks in the '${block}' block for the selected period?`)) {
                             const tasksInBlock = groupedTasks[selectedPeriod][block] || [];
-                            tasksInBlock.forEach(task => handleDeleteTask(task.id));
+                            const taskIdsToDelete = tasksInBlock.map(task => task.id);
+                            handleDeleteMultipleTasks(taskIdsToDelete);
                           }
                         }}
                       >
