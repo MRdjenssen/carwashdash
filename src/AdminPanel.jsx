@@ -228,13 +228,18 @@ export default function AdminPanel() {
 
     if (window.confirm(`Are you sure you want to delete all ${tasksInBlock.length} tasks in the '${block}' block for the selected period?`)) {
       if (tasksInBlock.length > 500) {
-        console.log("Large deletion, splitting into multiple batches.");
-        const promises = [];
+        console.log("Large deletion, processing batches sequentially.");
+        const chunks = [];
         for (let i = 0; i < tasksInBlock.length; i += 500) {
-          const chunk = tasksInBlock.slice(i, i + 500);
-          promises.push(handleDeleteTaskBatch(chunk));
+          chunks.push(tasksInBlock.slice(i, i + 500));
         }
-        await Promise.all(promises);
+
+        for (const chunk of chunks) {
+          await handleDeleteTaskBatch(chunk);
+          // Optional: add a small delay between batches to be even safer
+          await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+        }
+        console.log("All batches processed.");
       } else {
         await handleDeleteTaskBatch(tasksInBlock);
       }
