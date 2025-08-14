@@ -175,13 +175,15 @@ export default function AdminPanel() {
     try {
       const day = dayjs(taskForm.date).format("dddd").toLowerCase();
       console.log("Adding task:", { ...taskForm, day });
-      await addDoc(collection(db, "tasks"), {
+      const docRef = await addDoc(collection(db, "tasks"), {
         ...taskForm,
         day,
         done: false,
       });
+      console.log("Task added with ID: ", docRef.id);
       setAddTaskModal(false);
     } catch (err) {
+      console.error("Error adding task: ", err);
       alert("Fout bij opslaan: " + err.message);
     }
     setTaskSubmitting(false);
@@ -308,21 +310,6 @@ export default function AdminPanel() {
           <section>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold">Dag Taken</h2>
-              <button className="bg-red-600 text-white px-4 py-2 rounded-xl shadow hover:bg-red-700 font-semibold"
-                onClick={() => {
-                  if (window.confirm("Are you sure you want to delete all tasks in this view?")) {
-                    let tasksToDelete;
-                    if (sortBy === "timeBlock") {
-                      tasksToDelete = tasks.filter(task => task.repeat === selectedPeriod && dayBlocks.includes(task.timeBlock));
-                    } else {
-                      tasksToDelete = tasks.filter(task => task.repeat === selectedPeriod && dayBlocks.includes(task.day));
-                    }
-                    tasksToDelete.forEach(task => handleDeleteTask(task.id));
-                  }
-                }}
-              >
-                Delete All
-              </button>
             </div>
             <div className="flex gap-2 mb-6">
               {periodTabs.map(tab => (
@@ -352,7 +339,21 @@ export default function AdminPanel() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {dayBlocks.map(block => (
                   <div key={block} className="bg-white shadow rounded-2xl p-5">
-                    <h3 className="font-bold mb-3 capitalize">{block}</h3>
+                    <div className="flex justify-between items-center mb-3">
+                      <h3 className="font-bold capitalize">{block}</h3>
+                      <button
+                        className="bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600 disabled:bg-gray-400"
+                        disabled={(groupedTasks[selectedPeriod][block] || []).length === 0}
+                        onClick={() => {
+                          if (window.confirm(`Are you sure you want to delete all tasks in the '${block}' block for the selected period?`)) {
+                            const tasksInBlock = groupedTasks[selectedPeriod][block] || [];
+                            tasksInBlock.forEach(task => handleDeleteTask(task.id));
+                          }
+                        }}
+                      >
+                        Delete All
+                      </button>
+                    </div>
                     <div className="flex flex-col gap-3">
                       {(groupedTasks[selectedPeriod][block] || []).length === 0 && (
                         <div className="text-gray-400 text-sm">Geen taken.</div>
